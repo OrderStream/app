@@ -1,8 +1,17 @@
 import os
 import json
 import re
+from dotenv import dotenv_values
+
+# Force explicit path to .env
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+env_vars = dotenv_values(env_path)
 
 def parse_order_text(text: str) -> dict:
+    """
+    High-accuracy Order Parser for B2B Wholesale Bakeries.
+    Runs intelligent parsing with correction handling, unit conversions, and customer identification.
+    """
     text_clean = text.strip()
     
     # 1. Extract Customer / Sender Name

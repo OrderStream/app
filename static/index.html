@@ -3,50 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrderStream AI - Dashboard</title>
+    <title>OrderStream AI — Wholesale Bakery Order Operations</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-50 h-screen font-sans">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div class="flex justify-between items-center mb-8">
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
+        
+        <!-- Header & Positioning -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">OrderStream AI</h1>
-                <p class="text-sm text-gray-500 mt-1">Wholesale SMS Order Ingestion</p>
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/30">
+                        🥖
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                            OrderStream <span class="text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono font-medium">V2.0 AI Clerk</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">Automated Order-to-Production & QuickBooks Ingestion for Wholesale Bakeries</p>
+                    </div>
+                </div>
             </div>
-            <div>
-                <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow">
-                    Export to CSV (QuickBooks)
+            
+            <div class="flex items-center gap-3">
+                <button onclick="fetchOrders(); fetchKitchenSheet();" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5 font-medium">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Refresh Feed
                 </button>
+                <a href="/api/orders/export/csv" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Export to QuickBooks (CSV)
+                </a>
             </div>
+        </header>
+
+        <!-- Operational Metrics Bar -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+                <div class="text-xs font-medium text-slate-400">Total Ingested Orders</div>
+                <div id="stat-total-orders" class="text-2xl font-bold text-white mt-1">0</div>
+                <div class="text-[11px] text-indigo-400 mt-1 flex items-center gap-1">📱 100% via SMS</div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+                <div class="text-xs font-medium text-slate-400">Confirmed Orders</div>
+                <div id="stat-confirmed-orders" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+                <div class="text-[11px] text-emerald-500/80 mt-1">✓ 2-Way SMS Verified</div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+                <div class="text-xs font-medium text-slate-400">Tomorrow's Bake Units</div>
+                <div id="stat-total-units" class="text-2xl font-bold text-amber-400 mt-1">0</div>
+                <div class="text-[11px] text-slate-400 mt-1">Ready for 3 AM Kitchen</div>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+                <div class="text-xs font-medium text-slate-400">Est. Batch Revenue</div>
+                <div id="stat-total-revenue" class="text-2xl font-bold text-white mt-1">$0.00</div>
+                <div class="text-[11px] text-slate-400 mt-1">Ready for QB Invoice</div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-800 space-x-6 text-sm font-medium my-6">
+            <button onclick="switchTab('orders')" id="tab-btn-orders" class="pb-3 border-b-2 border-indigo-500 text-indigo-400 font-semibold flex items-center gap-2">
+                📋 Live Orders & Review
+            </button>
+            <button onclick="switchTab('kitchen')" id="tab-btn-kitchen" class="pb-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                👨‍🍳 Kitchen Production Sheet
+            </button>
+            <button onclick="switchTab('catalog')" id="tab-btn-catalog" class="pb-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                📦 Product Catalog & SKUs
+            </button>
+            <button onclick="switchTab('customers')" id="tab-btn-customers" class="pb-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                👥 Customer Directory
+            </button>
         </div>
 
-        <div class="bg-white shadow rounded-lg overflow-hidden">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Message</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extracted Items</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersTableBody" class="bg-white divide-y divide-gray-200">
-                    <!-- Data injected via JS -->
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Webhook simulator for MVP testing -->
-        <div class="mt-12 bg-white shadow rounded-lg p-6 border border-gray-200">
-            <h2 class="text-lg font-medium mb-4">Simulator: Send Test SMS Order</h2>
-            <div class="flex space-x-4">
-                <input type="text" id="simPhone" placeholder="Phone Number (e.g. +15551234)" class="border rounded p-2 flex-1" value="+15551234">
-                <input type="text" id="simBody" placeholder="Message Body (e.g. 5 sourdough 2 rye - Cafe Bella)" class="border rounded p-2 flex-2 w-1/2" value="Hey need 10 croissants and 5 sourdough - Cafe Bella">
-                <button id="simBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded shadow">Send Webhook</button>
+        <!-- TAB 1: LIVE ORDERS VIEW -->
+        <main id="tab-orders" class="space-y-6">
+            <div class="bg-slate-800/40 border border-slate-700/70 rounded-xl shadow-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-700/70 flex justify-between items-center">
+                    <h2 class="text-sm font-semibold text-slate-200">Incoming Wholesale Messages (Real-time Feed)</h2>
+                    <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Twilio Webhook Connected
+                    </span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Account & Customer</th>
+                                <th scope="col" class="px-4 py-3">Raw SMS Text</th>
+                                <th scope="col" class="px-4 py-3">Matched Catalog SKUs & Items</th>
+                                <th scope="col" class="px-4 py-3">Confidence</th>
+                                <th scope="col" class="px-4 py-3">SMS Confirmation</th>
+                                <th scope="col" class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body" class="divide-y divide-slate-800/70">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+
+            <!-- Two-Way Interactive SMS Testing Lab -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                            🧪 2-Way Wholesale SMS Simulator
+                        </h3>
+                        <p class="text-xs text-slate-400">Test how messy chef messages are received, matched to SKUs, and auto-confirmed via text.</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="space-y-3">
+                        <label class="block text-xs font-medium text-slate-300">Buyer Phone Number</label>
+                        <select id="sim-phone" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="+15551234">+1 (555) 1234 — Cafe Bella (Downtown)</option>
+                            <option value="+15559876">+1 (555) 9876 — The Daily Grind (Uptown)</option>
+                            <option value="+15554321">+1 (555) 4321 — Harbor View Bistro</option>
+                            <option value="+15559999">+1 (555) 9999 — New Guest Bakery Buyer</option>
+                        </select>
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <button onclick="setSample(1)" class="text-[11px] bg-slate-900 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">Sample 1: Correction</button>
+                            <button onclick="setSample(2)" class="text-[11px] bg-slate-900 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">Sample 2: Shorthand</button>
+                            <button onclick="setSample(3)" class="text-[11px] bg-slate-900 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">Sample 3: "YES" Confirm</button>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 space-y-3">
+                        <label class="block text-xs font-medium text-slate-300">Customer Message Body</label>
+                        <div class="flex gap-2">
+                            <textarea id="sim-body" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="Type messy text (e.g. need 6 sourdough loaves actually make it 8 and 2 dozen croissants)"></textarea>
+                            <button onclick="sendSimulatedWebhook()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 rounded-lg text-xs transition whitespace-nowrap shadow-lg shadow-indigo-600/30 flex items-center gap-2">
+                                Send SMS
+                            </button>
+                        </div>
+                        <div id="sim-response-box" class="hidden p-3 bg-slate-900/90 border border-indigo-500/40 rounded-lg text-xs">
+                            <span class="text-indigo-400 font-bold">📲 Automated SMS Response sent to Buyer:</span>
+                            <div id="sim-response-text" class="text-slate-200 mt-1 font-mono text-[11px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- TAB 2: KITCHEN PRODUCTION SHEET -->
+        <section id="tab-kitchen" class="hidden space-y-4">
+            <div class="bg-slate-800/40 border border-slate-700/70 rounded-xl p-6 shadow-xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-700/60 gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            👨‍🍳 3 AM Kitchen Bake Sheet
+                        </h2>
+                        <p class="text-xs text-slate-400">Aggregated batch totals automatically calculated across all client night orders.</p>
+                    </div>
+                    <button onclick="window.print()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5 font-medium">
+                        🖨️ Print Kitchen Sheet
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="px-4 py-3">Catalog SKU</th>
+                                <th class="px-4 py-3">Production Item Name</th>
+                                <th class="px-4 py-3 text-right">Total Batch Quantity to Bake</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kitchen-sheet-body" class="divide-y divide-slate-800">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: PRODUCT CATALOG & SKUs -->
+        <section id="tab-catalog" class="hidden space-y-4">
+            <div class="bg-slate-800/40 border border-slate-700/70 rounded-xl p-6 shadow-xl">
+                <div class="pb-4 border-b border-slate-700/60">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        📦 Active Product Catalog & Fuzzy Aliases
+                    </h2>
+                    <p class="text-xs text-slate-400">These official SKUs are what OrderStream automatically matches from informal customer text messages.</p>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="px-4 py-3">SKU</th>
+                                <th class="px-4 py-3">Item Description</th>
+                                <th class="px-4 py-3">Unit</th>
+                                <th class="px-4 py-3">Wholesale Price</th>
+                                <th class="px-4 py-3">Fuzzy Search Aliases</th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalog-table-body" class="divide-y divide-slate-800">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: CUSTOMER DIRECTORY -->
+        <section id="tab-customers" class="hidden space-y-4">
+            <div class="bg-slate-800/40 border border-slate-700/70 rounded-xl p-6 shadow-xl">
+                <div class="pb-4 border-b border-slate-700/60">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        👥 Wholesale Customer Directory & Delivery Routes
+                    </h2>
+                    <p class="text-xs text-slate-400">Incoming caller IDs are automatically mapped to account numbers and routes.</p>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="px-4 py-3">Account #</th>
+                                <th class="px-4 py-3">Business Name</th>
+                                <th class="px-4 py-3">Contact</th>
+                                <th class="px-4 py-3">Phone Number</th>
+                                <th class="px-4 py-3">Assigned Route</th>
+                                <th class="px-4 py-3">Pricing Tier</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table-body" class="divide-y divide-slate-800">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
     </div>
-    
-    <script src="/dashboard/app.js"></script>
+
+    <!-- Script -->
+    <script src="/static/app.js"></script>
 </body>
 </html>

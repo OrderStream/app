@@ -1,33 +1,34 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
-from database import engine, Base
+import models
+from database import engine, SessionLocal
 from routers import webhook, orders
+from services.seeder import seed_default_data
 
-# Create DB tables
-Base.metadata.create_all(bind=engine)
+# Initialize Database Schema
+models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="OrderStream AI")
+# Auto-seed default bakery catalog & customer directory
+try:
+    db = SessionLocal()
+    seed_default_data(db)
+    db.close()
+except Exception as e:
+    print(f"Database Seeding Notice: {e}")
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="OrderStream AI - Wholesale Order Operating System")
 
-app.include_router(webhook.router, prefix="/api/webhook", tags=["webhook"])
-app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
+# Mount Static Assets
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Mount static files for the dashboard
-app.mount("/dashboard", StaticFiles(directory="static", html=True), name="static")
+# Include Routers
+app.include_router(webhook.router, prefix="/api/webhook", tags=["Webhook"])
+app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
 
 @app.get("/")
-def root():
-    return RedirectResponse(url="/dashboard/index.html")
+def read_root():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/index.html")
 
 if __name__ == "__main__":
     import uvicorn
