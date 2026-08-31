@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrderStream AI - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 h-screen font-sans">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">OrderStream AI</h1>
+                <p class="text-sm text-gray-500 mt-1">Wholesale SMS Order Ingestion</p>
+            </div>
+            <div>
+                <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow">
+                    Export to CSV (QuickBooks)
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Message</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extracted Items</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Data injected via JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Webhook simulator for MVP testing -->
+        <div class="mt-12 bg-white shadow rounded-lg p-6 border border-gray-200">
+            <h2 class="text-lg font-medium mb-4">Simulator: Send Test SMS Order</h2>
+            <div class="flex space-x-4">
+                <input type="text" id="simPhone" placeholder="Phone Number (e.g. +15551234)" class="border rounded p-2 flex-1" value="+15551234">
+                <input type="text" id="simBody" placeholder="Message Body (e.g. 5 sourdough 2 rye - Cafe Bella)" class="border rounded p-2 flex-2 w-1/2" value="Hey need 10 croissants and 5 sourdough - Cafe Bella">
+                <button id="simBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded shadow">Send Webhook</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/dashboard/app.js"></script>
+</body>
+</html>
