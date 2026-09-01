@@ -27,19 +27,18 @@ def process_order_intelligence(
     # -------------------------------------------------------------
     # 0. CONVERSATIONAL BUSINESS BRAIN (FAQ & Inquiry Handler)
     # -------------------------------------------------------------
-    # If the customer is asking a question rather than ordering
     is_inquiry = False
     inquiry_reply = None
     
     faq_triggers = ["how much", "what is the price", "cost of", "cutoff", "cut off", "delivery time", "minimum order", "deliver to", "allergen", "gluten"]
     if any(ft in clean_text for ft in faq_triggers) and not parsed_items:
         is_inquiry = True
+        cutoff_val = business.order_cutoff_time if business else "23:00 (11:00 PM)"
         if "cutoff" in clean_text or "cut off" in clean_text:
-            inquiry_reply = f"OrderStream ({business.name if business else 'Bakery'}): Our order cutoff is {business.order_cutoff_time if business else '11:00 PM'} for next-day morning delivery."
+            inquiry_reply = f"OrderStream ({business.name if business else 'Bakery'}): Our order cutoff is {cutoff_val} for next-day morning delivery."
         elif "minimum" in clean_text:
             inquiry_reply = f"OrderStream: Our minimum wholesale order is ${business.minimum_order_amount if business else 35.0:.2f}."
         elif "how much" in clean_text or "price" in clean_text or "cost" in clean_text:
-            # Look up product in catalog
             prod, _ = match_product_sku(db, clean_text, business_id=b_id)
             if prod:
                 inquiry_reply = f"OrderStream: {prod.name} ([{prod.sku}]) is ${prod.unit_price:.2f} per {prod.unit} wholesale."
@@ -82,7 +81,7 @@ def process_order_intelligence(
         last_order = db.query(models.Order).filter(
             models.Order.business_id == b_id,
             models.Order.customer_id == customer.id,
-            models.Order.status.in_(["Ready", "Exported", "Confirmed"])
+            models.Order.status.in_(["Ready", "Exported", "Confirmed", "Approved", "Sent to Production"])
         ).order_by(models.Order.id.desc()).first()
         
         if last_order and last_order.items:
@@ -115,16 +114,23 @@ def process_order_intelligence(
     for item in parsed_items:
         raw_name = item.get("item_name", "").strip()
         qty = item.get("quantity", 1)
-        raw_name_lower = raw_name.lower()
+        raw_name_lower = raw_name.lower().strip()
 
         matched_sku = None
-        if raw_name_lower in customer_memories:
-            matched_sku = customer_memories[raw_name_lower]
+        item_confidence = 85
+        
+        # Check custom language memory strictly on item name or if phrase is in item name
+        for phrase, sku in customer_memories.items():
+            if phrase == raw_name_lower or phrase in raw_name_lower or raw_name_lower in phrase:
+                matched_sku = sku
+                item_confidence = 99
+                break
+
+        if matched_sku:
             prod = db.query(models.ProductCatalog).filter(
                 models.ProductCatalog.business_id == b_id,
                 models.ProductCatalog.sku == matched_sku
             ).first()
-            item_confidence = 99
         else:
             prod, item_confidence = match_product_sku(db, raw_name, business_id=b_id)
             matched_sku = prod.sku if prod else "MISC-001"
@@ -196,8 +202,9 @@ def process_order_intelligence(
             if r_skus and r_skus == curr_skus:
                 is_duplicate = True
                 duplicate_of_id = r_order.id
-                confidence_score = 40
-                anomaly_reason = f"Possible Duplicate: Identical to {r_order.channel} Order #{r_order.id} sent {r_order.created_at.strftime('%H:%M')}"
+                if not is_anomaly:
+                    anomaly_reason = f"Possible Duplicate: Identical to {r_order.channel} Order #{r_order.id} sent {r_order.created_at.strftime('%H:%M')}"
+                confidence_score = min(confidence_score, 40)
                 break
 
     order_status = "Needs Review" if (is_duplicate or is_anomaly or confidence_score < 70) else "Ready"
@@ -251,7 +258,7 @@ def run_copilot_query(db: Session, query: str, business_id: int = 1) -> str:
     business = db.query(models.BusinessTenant).filter(models.BusinessTenant.id == business_id).first()
     
     if "cutoff" in q or "policy" in q:
-        return f"⏰ **Business Policy:** Nightly cutoff is **{business.order_cutoff_time if business else '11:00 PM'}**. Minimum order amount is **${business.minimum_order_amount if business else 35.0:.2f}**."
+        return f"⏰ **Business Policy:** Nightly cutoff is **{business.order_cutoff_time if business else '23:00 (11:00 PM)'}**. Minimum order amount is **${business.minimum_order_amount if business else 35.0:.2f}**."
         
     elif "why" in q and ("review" in q or "flag" in q or "anomaly" in q):
         flagged = [o for o in orders if o.is_anomaly or o.status == "Needs Review"]
@@ -277,7 +284,11 @@ def run_copilot_query(db: Session, query: str, business_id: int = 1) -> str:
         summary = ", ".join([f"{name} ({qty} units)" for name, qty in sorted_items])
         return f"📊 **Top Demand Items Tonight:** {summary}."
         
+    elif "total revenue" in q or "revenue" in q:
+        total_rev = sum(sum(i.line_total for i in o.items) for o in orders if o.status in ["Approved", "Sent to Production", "Ready"])
+        return f"💰 **Queued Approved Batch Revenue:** **${total_rev:.2f}** across {len(orders)} customer orders."
+        
     else:
-        total_rev = sum(sum(i.line_total for i in o.items) for o in orders)
-        total_units = sum(sum(i.quantity for i in o.items) for o in orders)
-        return f"💡 **OrderStream Intelligence Summary:** Managing **{len(orders)} multi-channel orders** across **{len(customers)} accounts**. Total bake batch: **{total_units} units**. Queued batch value: **${total_rev:.2f}**."
+        total_rev = sum(sum(i.line_total for i in o.items) for o in orders if o.status in ["Approved", "Sent to Production", "Ready"])
+        total_units = sum(sum(i.quantity for i in o.items) for o in orders if o.status in ["Approved", "Sent to Production", "Ready"])
+        return f"💡 **OrderStream Intelligence Summary:** Managing **{len(orders)} multi-channel orders** across **{len(customers)} accounts**. Total approved bake batch: **{total_units} units**. Queued batch value: **${total_rev:.2f}**."

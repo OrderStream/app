@@ -2,11 +2,11 @@ let currentTab = 'orders';
 let activeStatus = 'ALL';
 let activeChannel = 'ALL';
 let uiMode = 'business';
-let activeCorrection = { orderId: null, customerId: null, phrase: '' };
 let currentDetailOrderId = null;
 let currentDetailOrder = null;
+let cachedCatalog = [];
 
-// Mode Switcher: Business Mode vs Demo Mode
+// Mode Switcher: Business Mode vs Demo Lab
 function setUIMode(mode) {
     uiMode = mode;
     const btnBiz = document.getElementById('mode-btn-business');
@@ -26,7 +26,7 @@ function setUIMode(mode) {
 
 function switchTab(tabName) {
     currentTab = tabName;
-    ['orders', 'customers', 'brain', 'kitchen'].forEach(t => {
+    ['orders', 'customers', 'products', 'brain', 'kitchen', 'copilot'].forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
         if (el && btn) {
@@ -44,8 +44,8 @@ function switchTab(tabName) {
 
     if (tabName === 'orders') fetchOrders();
     if (tabName === 'customers') fetchCustomers();
+    if (tabName === 'products') fetchCatalog();
     if (tabName === 'brain') {
-        fetchCatalog();
         fetchMemories();
         fetchBusinessBrain();
     }
@@ -64,6 +64,11 @@ function filterStatus(status) {
             }
         }
     });
+    fetchOrders();
+}
+
+function filterChannel(channel) {
+    activeChannel = channel;
     fetchOrders();
 }
 
@@ -93,7 +98,9 @@ async function fetchOrders() {
         }
 
         orders.forEach(order => {
-            totalRev += order.order_total;
+            if (order.status === 'Approved' || order.status === 'Sent to Production' || order.status === 'Ready') {
+                totalRev += order.order_total;
+            }
             if (order.status === 'Needs Review' || order.is_anomaly || order.is_duplicate) reviewCount++;
 
             let channelIcon = '📱 SMS';
@@ -102,7 +109,9 @@ async function fetchOrders() {
 
             let itemsHtml = '<div class="space-y-1">';
             order.items.forEach(item => {
-                totalUnits += item.quantity;
+                if (order.status === 'Approved' || order.status === 'Sent to Production' || order.status === 'Ready') {
+                    totalUnits += item.quantity;
+                }
                 itemsHtml += `
                     <div class="flex items-center justify-between text-xs bg-slate-950/80 px-2.5 py-1 rounded border border-slate-800">
                         <span class="font-medium text-slate-200">
@@ -119,7 +128,7 @@ async function fetchOrders() {
                 </div>
             </div>`;
 
-            // Confidence Scoring Display
+            // Confidence Scoring Breakdown
             let confHtml = '';
             if (order.confidence_score >= 90) {
                 confHtml = `<span class="text-emerald-400 text-xs font-bold font-mono">🟢 ${order.confidence_score}% High</span>`;
@@ -182,7 +191,7 @@ async function fetchOrders() {
                     </button>
                     ${order.status !== 'Approved' && order.status !== 'Sent to Production' ? `
                         <button onclick="quickApproveOrder(${order.id})" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1 rounded transition block w-full">
-                            ✓ Approve
+                            ✓ Quick Approve
                         </button>
                     ` : ''}
                 </td>
@@ -204,7 +213,7 @@ function updateMetrics(orders, reviews, units, revenue) {
 }
 
 // -------------------------------------------------------------
-// 2. ORDER DETAIL MODAL & AUDIT TIMELINE LOGIC
+// 2. ORDER DETAIL DRAWER & AUDIT TIMELINE
 // -------------------------------------------------------------
 async function openOrderDetail(orderId) {
     currentDetailOrderId = orderId;
@@ -224,19 +233,23 @@ async function openOrderDetail(orderId) {
         // Render Audit Timeline
         const timelineList = document.getElementById('detail-timeline-list');
         timelineList.innerHTML = '';
-        order.timeline.forEach(t => {
-            const div = document.createElement('div');
-            div.className = 'text-xs text-slate-300 flex items-start justify-between border-b border-slate-800/80 pb-1.5';
-            div.innerHTML = `
-                <div>
-                    <span class="text-indigo-400 font-bold font-mono">[${t.event_type}]</span>
-                    <span class="text-slate-400 font-medium">by ${t.actor}:</span>
-                    <span class="text-slate-200">${t.description}</span>
-                </div>
-                <span class="text-[10px] text-slate-500 font-mono whitespace-nowrap ml-3">${t.created_at}</span>
-            `;
-            timelineList.appendChild(div);
-        });
+        if (order.timeline && order.timeline.length > 0) {
+            order.timeline.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'text-xs text-slate-300 flex items-start justify-between border-b border-slate-800/80 pb-1.5';
+                div.innerHTML = `
+                    <div>
+                        <span class="text-indigo-400 font-bold font-mono">[${t.event_type}]</span>
+                        <span class="text-slate-400 font-medium">by ${t.actor}:</span>
+                        <span class="text-slate-200">${t.description}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono whitespace-nowrap ml-3">${t.created_at}</span>
+                `;
+                timelineList.appendChild(div);
+            });
+        } else {
+            timelineList.innerHTML = '<div class="text-xs text-slate-500 italic">No previous modifications recorded.</div>';
+        }
 
         document.getElementById('order-detail-modal').classList.remove('hidden');
     } catch (err) {
@@ -258,7 +271,7 @@ function renderDetailItemsTable(order) {
                 <input type="text" id="edit-name-${item.id}" value="${item.item_name}" class="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-white w-40">
             </td>
             <td class="px-3 py-2">
-                <input type="number" id="edit-qty-${item.id}" value="${item.quantity}" class="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-white w-16">
+                <input type="number" id="edit-qty-${item.id}" value="${item.quantity}" min="1" class="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-white w-16">
             </td>
             <td class="px-3 py-2 text-slate-400 font-mono">$${item.unit_price.toFixed(2)}</td>
             <td class="px-3 py-2 font-mono text-white font-semibold">
@@ -313,6 +326,39 @@ async function deleteItemRow(itemId) {
     }
 }
 
+function openAddItemModal() {
+    const select = document.getElementById('add-item-prod-select');
+    select.innerHTML = '';
+    cachedCatalog.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.innerText = `[${p.sku}] ${p.name} ($${p.unit_price.toFixed(2)})`;
+        select.appendChild(opt);
+    });
+    document.getElementById('add-item-modal').classList.remove('hidden');
+}
+function closeAddItemModal() {
+    document.getElementById('add-item-modal').classList.add('hidden');
+}
+
+async function submitAddItemToOrder() {
+    const prodId = parseInt(document.getElementById('add-item-prod-select').value);
+    const qty = parseInt(document.getElementById('add-item-qty').value) || 1;
+
+    try {
+        await fetch(`/api/orders/${currentDetailOrderId}/items/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: prodId, quantity: qty })
+        });
+        closeAddItemModal();
+        openOrderDetail(currentDetailOrderId);
+        fetchOrders();
+    } catch (err) {
+        alert('Error adding item.');
+    }
+}
+
 async function updateStatusCurrentOrder(newStatus) {
     try {
         await fetch(`/api/orders/${currentDetailOrderId}/status`, {
@@ -356,7 +402,7 @@ function closeOrderDetailModal() {
 }
 
 // -------------------------------------------------------------
-// 3. CUSTOMER PROFILES & RULES
+// 3. CUSTOMER MANAGEMENT
 // -------------------------------------------------------------
 async function fetchCustomers() {
     try {
@@ -446,94 +492,27 @@ async function submitCustomerUpdate() {
     }
 }
 
-// -------------------------------------------------------------
-// 4. KITCHEN PRODUCTION SHEET WITH STATUS
-// -------------------------------------------------------------
-async function fetchKitchenSheet() {
-    try {
-        const res = await fetch('/api/orders/kitchen-sheet');
-        const items = await res.json();
-        const tbody = document.getElementById('kitchen-sheet-body');
-        tbody.innerHTML = '';
-
-        if (items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500 text-xs">No active production batches for tomorrow.</td></tr>`;
-            return;
-        }
-
-        items.forEach(item => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-4 py-3 font-mono text-indigo-400 font-bold text-xs">${item.sku}</td>
-                <td class="px-4 py-3 font-semibold text-slate-200 text-sm">${item.item_name}</td>
-                <td class="px-4 py-3 text-center text-xs text-slate-400">${item.order_count} client orders</td>
-                <td class="px-4 py-3 text-right font-black text-amber-400 text-base font-mono">${item.total_quantity} Units</td>
-                <td class="px-4 py-3 text-right">
-                    <select onchange="updateProductionStatus('${item.sku}', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
-                        <option value="Pending" ${item.production_status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
-                        <option value="In Progress" ${item.production_status === 'In Progress' ? 'selected' : ''}>👨‍🍳 Baking</option>
-                        <option value="Completed" ${item.production_status === 'Completed' ? 'selected' : ''}>✓ Baked & Packed</option>
-                    </select>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function updateProductionStatus(sku, newStatus) {
-    try {
-        await fetch(`/api/orders/production/status?sku=${sku}&status=${encodeURIComponent(newStatus)}`, { method: 'POST' });
-        fetchKitchenSheet();
-    } catch (err) {
-        console.error(err);
-    }
+function openAddCustomerModal() {
+    document.getElementById('cust-edit-id').value = '';
+    document.getElementById('cust-edit-name').value = '';
+    document.getElementById('cust-edit-contact').value = '';
+    document.getElementById('cust-edit-phone').value = '+1555';
+    document.getElementById('cust-edit-route').value = 'Route A - Downtown Core';
+    document.getElementById('cust-edit-discount').value = '0';
+    document.getElementById('cust-edit-instructions').value = '';
+    document.getElementById('customer-edit-modal').classList.remove('hidden');
 }
 
 // -------------------------------------------------------------
-// 5. BUSINESS BRAIN & CATALOG
+// 4. PRODUCT CATALOG MANAGEMENT
 // -------------------------------------------------------------
-async function fetchBusinessBrain() {
-    try {
-        const res = await fetch('/api/orders/business/brain');
-        const b = await res.json();
-        document.getElementById('header-business-name').innerText = b.name;
-        document.getElementById('brain-cutoff').value = b.order_cutoff_time;
-        document.getElementById('brain-min-order').value = b.minimum_order_amount;
-        document.getElementById('brain-faq').value = b.business_faq;
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function saveBusinessBrain() {
-    const cutoff = document.getElementById('brain-cutoff').value;
-    const minOrder = parseFloat(document.getElementById('brain-min-order').value) || 0;
-    const faq = document.getElementById('brain-faq').value;
-
-    try {
-        await fetch('/api/orders/business/brain', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                order_cutoff_time: cutoff,
-                minimum_order_amount: minOrder,
-                business_faq: faq
-            })
-        });
-        alert('✅ Business Brain & Policies saved!');
-    } catch (err) {
-        alert('Error saving brain.');
-    }
-}
-
 async function fetchCatalog() {
     try {
         const res = await fetch('/api/orders/catalog');
         const products = await res.json();
+        cachedCatalog = products;
         const tbody = document.getElementById('catalog-table-body');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         products.forEach(p => {
@@ -541,6 +520,7 @@ async function fetchCatalog() {
             tr.innerHTML = `
                 <td class="px-3 py-2 font-mono text-indigo-400 font-bold">${p.sku}</td>
                 <td class="px-3 py-2 font-semibold text-white">${p.name}</td>
+                <td class="px-3 py-2 text-slate-400">${p.category}</td>
                 <td class="px-3 py-2 text-emerald-400 font-mono font-bold">$${p.unit_price.toFixed(2)} / ${p.unit}</td>
                 <td class="px-3 py-2 text-amber-400 font-mono">${p.stock_available}</td>
                 <td class="px-3 py-2 text-slate-400 italic">${p.aliases}</td>
@@ -599,6 +579,47 @@ async function deleteProduct(prodId) {
     }
 }
 
+// -------------------------------------------------------------
+// 5. BUSINESS BRAIN & POLICIES
+// -------------------------------------------------------------
+async function fetchBusinessBrain() {
+    try {
+        const res = await fetch('/api/orders/business/brain');
+        const b = await res.json();
+        document.getElementById('header-business-name').innerText = b.name;
+        document.getElementById('brain-name').value = b.name;
+        document.getElementById('brain-cutoff').value = b.order_cutoff_time;
+        document.getElementById('brain-min-order').value = b.minimum_order_amount;
+        document.getElementById('brain-faq').value = b.business_faq;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function saveBusinessBrain() {
+    const name = document.getElementById('brain-name').value;
+    const cutoff = document.getElementById('brain-cutoff').value;
+    const minOrder = parseFloat(document.getElementById('brain-min-order').value) || 0;
+    const faq = document.getElementById('brain-faq').value;
+
+    try {
+        await fetch('/api/orders/business/brain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                order_cutoff_time: cutoff,
+                minimum_order_amount: minOrder,
+                business_faq: faq
+            })
+        });
+        document.getElementById('header-business-name').innerText = name;
+        alert('✅ Business Brain & Policies saved successfully!');
+    } catch (err) {
+        alert('Error saving brain.');
+    }
+}
+
 async function fetchMemories() {
     try {
         const res = await fetch('/api/orders/memories');
@@ -623,7 +644,53 @@ async function fetchMemories() {
 }
 
 // -------------------------------------------------------------
-// 6. COPILOT & INBOUND SIMULATOR
+// 6. KITCHEN PRODUCTION SHEET
+// -------------------------------------------------------------
+async function fetchKitchenSheet() {
+    try {
+        const res = await fetch('/api/orders/kitchen-sheet');
+        const items = await res.json();
+        const tbody = document.getElementById('kitchen-sheet-body');
+        tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500 text-xs">No approved production batches yet for tomorrow.</td></tr>`;
+            return;
+        }
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-mono text-indigo-400 font-bold text-xs">${item.sku}</td>
+                <td class="px-4 py-3 font-semibold text-slate-200 text-sm">${item.item_name}</td>
+                <td class="px-4 py-3 text-center text-xs text-slate-400">${item.order_count} client orders</td>
+                <td class="px-4 py-3 text-right font-black text-amber-400 text-base font-mono">${item.total_quantity} Units</td>
+                <td class="px-4 py-3 text-right">
+                    <select onchange="updateProductionStatus('${item.sku}', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+                        <option value="Pending" ${item.production_status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
+                        <option value="In Progress" ${item.production_status === 'In Progress' ? 'selected' : ''}>👨‍🍳 Baking</option>
+                        <option value="Completed" ${item.production_status === 'Completed' ? 'selected' : ''}>✓ Baked & Packed</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function updateProductionStatus(sku, newStatus) {
+    try {
+        await fetch(`/api/orders/production/status?sku=${sku}&status=${encodeURIComponent(newStatus)}`, { method: 'POST' });
+        fetchKitchenSheet();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// -------------------------------------------------------------
+// 7. COPILOT & INBOUND SIMULATOR
 // -------------------------------------------------------------
 async function askCopilot(query) {
     document.getElementById('copilot-input').value = query;
@@ -712,6 +779,36 @@ function setScenario(type) {
     }
 }
 
+// -------------------------------------------------------------
+// 8. INTEGRATIONS MODAL & ONBOARDING
+// -------------------------------------------------------------
+async function openIntegrationsModal() {
+    try {
+        const res = await fetch('/api/orders/integrations/status');
+        const channels = await res.json();
+        const tbody = document.getElementById('integrations-table-body');
+        tbody.innerHTML = '';
+
+        channels.forEach(ch => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-3 py-2 font-bold text-white">${ch.channel}</td>
+                <td class="px-3 py-2 text-slate-400 font-mono text-[11px]">${ch.type}</td>
+                <td class="px-3 py-2 font-bold text-emerald-400 font-mono">🟢 ${ch.status}</td>
+                <td class="px-3 py-2 text-slate-300 text-[11px]">${ch.details}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('integrations-modal').classList.remove('hidden');
+    } catch (err) {
+        console.error(err);
+    }
+}
+function closeIntegrationsModal() {
+    document.getElementById('integrations-modal').classList.add('hidden');
+}
+
 function openOnboardingModal() {
     document.getElementById('onboarding-modal').classList.remove('hidden');
 }
@@ -728,7 +825,8 @@ function finishOnboarding() {
     closeOnboardingModal();
 }
 
-// Initial
+// Initial Load
 fetchOrders();
+fetchCatalog();
 fetchBusinessBrain();
-setInterval(fetchOrders, 4000);
+setInterval(fetchOrders, 5000);
