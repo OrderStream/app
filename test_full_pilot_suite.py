@@ -1,0 +1,190 @@
+import os
+import sys
+import unittest
+from datetime import datetime, timedelta
+
+# Ensure workspace is on sys.path
+sys.path.insert(0, os.path.dirname(__file__))
+
+import models
+from database import SessionLocal, engine
+from services.seeder import seed_default_data
+from services.llm_parser import parse_order_text
+from services.matcher import match_or_create_customer, match_product_sku
+from services.intelligence import process_order_intelligence, run_copilot_query, record_human_correction_learning
+
+class OrderStreamPilotTestSuite(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Reset and seed test database
+        models.Base.metadata.drop_all(bind=engine)
+        models.Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        seed_default_data(db)
+        db.close()
+
+    def setUp(self):
+        self.db = SessionLocal()
+        self.business = self.db.query(models.BusinessTenant).filter(models.BusinessTenant.id == 1).first()
+
+    def tearDown(self):
+        self.db.close()
+
+    # -------------------------------------------------------------
+    # 1. NORMAL CLEAR ORDER PARSING & SKU MATCHING
+    # -------------------------------------------------------------
+    def test_01_normal_order_parsing(self):
+        msg = "Need 10 sourdough loaves and 6 baguettes for Cafe Bella"
+        parsed = parse_order_text(msg)
+        self.assertEqual(len(parsed["items"]), 2)
+        
+        customer = match_or_create_customer(self.db, "+15551234", "Cafe Bella", business_id=1)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        self.assertEqual(len(intel["items"]), 2)
+        skus = [i["matched_sku"] for i in intel["items"]]
+        self.assertIn("BRD-001", skus) # Country Sourdough
+        self.assertIn("BRD-003", skus) # Traditional Baguette
+        self.assertFalse(intel["is_anomaly"])
+        self.assertGreaterEqual(intel["confidence_score"], 80)
+
+    # -------------------------------------------------------------
+    # 2. "SAME AS LAST WEEK" ORDER MEMORY CLONING
+    # -------------------------------------------------------------
+    def test_02_repeat_order_memory_cloning(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15551234").first()
+        msg = "Same as last week + 4 baguettes please"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        self.assertTrue(intel["history_cloned"])
+        self.assertIn("Auto-cloned", intel["history_note"])
+        self.assertGreater(len(intel["items"]), 0)
+
+    # -------------------------------------------------------------
+    # 3. CUSTOMER JARGON / NICKNAME ("THE BIG BREAD")
+    # -------------------------------------------------------------
+    def test_03_customer_jargon_mapping(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15551234").first()
+        msg = "Send 8 of the big bread please"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        matched_item = next((i for i in intel["items"] if i["matched_sku"] == "BRD-001"), None)
+        self.assertIsNotNone(matched_item)
+        self.assertEqual(matched_item["matched_sku"], "BRD-001")
+        self.assertEqual(matched_item["match_confidence"], 99)
+
+    # -------------------------------------------------------------
+    # 4. UNKNOWN PRODUCT HANDLING (ROUTED TO REVIEW)
+    # -------------------------------------------------------------
+    def test_04_unknown_product_safety(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15551234").first()
+        msg = "Need 15 alien spaceship cakes"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        self.assertTrue(intel["is_anomaly"])
+        self.assertEqual(intel["status"], "Needs Review")
+        self.assertLess(intel["confidence_score"], 70)
+
+    # -------------------------------------------------------------
+    # 5. BUSINESS BRAIN FAQ INQUIRIES (NO FAKE ORDER)
+    # -------------------------------------------------------------
+    def test_05_faq_inquiry_handler(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15551234").first()
+        msg = "What is your order cutoff time tonight?"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        self.assertTrue(intel["is_inquiry"])
+        self.assertIn("cutoff", intel["ai_clarification"].lower())
+        self.assertEqual(len(intel["items"]), 0)
+
+    # -------------------------------------------------------------
+    # 6. 500X QUANTITY ANOMALY PROTECTION
+    # -------------------------------------------------------------
+    def test_06_500x_anomaly_detection(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15554321").first() # avg: 14 units
+        msg = "Need 500 sourdough loaves for morning"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        self.assertTrue(intel["is_anomaly"])
+        self.assertIn("Volume Spike", intel["anomaly_reason"])
+        self.assertEqual(intel["status"], "Needs Review")
+
+    # -------------------------------------------------------------
+    # 7. DUPLICATE ORDER INTERCEPTOR
+    # -------------------------------------------------------------
+    def test_07_duplicate_order_detection(self):
+        customer = self.db.query(models.Customer).filter(models.Customer.phone_number == "+15551234").first()
+        msg = "12 sourdough loaves and 2 dozen croissants"
+        parsed = parse_order_text(msg)
+        intel = process_order_intelligence(self.db, self.business, customer, msg, parsed["items"])
+        
+        # O1 in seeder has identical SKUs for Cafe Bella within last 60 mins
+        self.assertTrue(intel["is_duplicate"])
+        self.assertEqual(intel["status"], "Needs Review")
+
+    # -------------------------------------------------------------
+    # 8. CUSTOMER-SPECIFIC PRICING DISCOUNTS
+    # -------------------------------------------------------------
+    def test_08_customer_pricing_discounts(self):
+        c1 = self.db.query(models.Customer).filter(models.Customer.business_name == "Cafe Bella").first()
+        self.assertEqual(c1.discount_percentage, 10.0) # 10% off
+        
+        c3 = self.db.query(models.Customer).filter(models.Customer.business_name == "Harbor View Bistro").first()
+        self.assertEqual(c3.discount_percentage, 15.0) # 15% off VIP
+
+    # -------------------------------------------------------------
+    # 9. KITCHEN BAKE SHEET AGGREGATION (APPROVED ONLY)
+    # -------------------------------------------------------------
+    def test_09_kitchen_sheet_aggregation(self):
+        from routers.orders import get_kitchen_production_sheet
+        sheet = get_kitchen_production_sheet(business_id=1, db=self.db)
+        
+        self.assertGreater(len(sheet), 0)
+        for row in sheet:
+            self.assertIn("sku", row)
+            self.assertIn("total_quantity", row)
+            self.assertGreater(row["total_quantity"], 0)
+
+    # -------------------------------------------------------------
+    # 10. MULTI-TENANT DATA ISOLATION (BUSINESS A vs BUSINESS B)
+    # -------------------------------------------------------------
+    def test_10_multi_tenant_isolation(self):
+        # Create Business B
+        b2 = models.BusinessTenant(
+            slug="manchesterbakes",
+            name="Manchester Artisan Bakes",
+            order_cutoff_time="22:00",
+            minimum_order_amount=50.0
+        )
+        self.db.add(b2)
+        self.db.commit()
+        self.db.refresh(b2)
+        
+        # Add Product to Business B
+        p2 = models.ProductCatalog(
+            business_id=b2.id,
+            sku="MCR-001",
+            name="Manchester Sourdough",
+            unit_price=7.00
+        )
+        self.db.add(p2)
+        self.db.commit()
+        
+        # Query Business A catalog - MCR-001 MUST NOT appear
+        b1_products = self.db.query(models.ProductCatalog).filter(models.ProductCatalog.business_id == 1).all()
+        b1_skus = [p.sku for p in b1_products]
+        self.assertNotIn("MCR-001", b1_skus)
+        
+        # Query Business B catalog - Only MCR-001 appears
+        b2_products = self.db.query(models.ProductCatalog).filter(models.ProductCatalog.business_id == b2.id).all()
+        b2_skus = [p.sku for p in b2_products]
+        self.assertIn("MCR-001", b2_skus)
+        self.assertNotIn("BRD-001", b2_skus)
+
+if __name__ == "__main__":
+    unittest.main()

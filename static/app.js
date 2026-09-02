@@ -1,13 +1,152 @@
 let currentTab = 'overview';
 let activeStatus = 'ALL';
 let activeChannel = 'ALL';
+let currentShift = 'Morning';
 let currentDetailOrderId = null;
 let currentDetailOrder = null;
 let cachedCatalog = [];
 let cachedOrders = [];
+let searchDebounceTimer = null;
 
 // -------------------------------------------------------------
-// 1. TAB & NAVIGATION CONTROLLER
+// 1. INITIALIZATION & SHORTCUTS
+// -------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    switchTab('overview');
+    initCommandPalette();
+    initNotificationEvents();
+});
+
+function initCommandPalette() {
+    window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            openCommandPalette();
+        }
+        if (e.key === 'Escape') {
+            closeCommandPalette();
+            closeOrderDrawer();
+            closeContributingOrdersModal();
+            closeCustomerModal();
+            closeAddProductModal();
+            closeAddItemModal();
+            closeOnboardingModal();
+        }
+    });
+}
+
+function openCommandPalette() {
+    const modal = document.getElementById('command-palette-modal');
+    const input = document.getElementById('cmd-search-input');
+    if (modal) modal.classList.remove('hidden');
+    if (input) {
+        input.value = '';
+        input.focus();
+        renderDefaultCmdActions();
+    }
+}
+
+function closeCommandPalette() {
+    const modal = document.getElementById('command-palette-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function renderDefaultCmdActions() {
+    const container = document.getElementById('cmd-search-results');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">Quick Navigation</div>
+        <button onclick="closeCommandPalette(); switchTab('orders');" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+            <span>Go to Wholesale Orders Feed</span>
+            <span class="text-ink-muted font-mono text-[10px]">Jump</span>
+        </button>
+        <button onclick="closeCommandPalette(); switchTab('kitchen');" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+            <span>Go to Kitchen Production Floor Sheet</span>
+            <span class="text-ink-muted font-mono text-[10px]">Jump</span>
+        </button>
+        <button onclick="closeCommandPalette(); switchTab('customers');" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+            <span>Go to Customer Accounts Directory</span>
+            <span class="text-ink-muted font-mono text-[10px]">Jump</span>
+        </button>
+        <button onclick="closeCommandPalette(); openAddProductModal();" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+            <span>+ Add New Product to Catalog</span>
+            <span class="text-ink-muted font-mono text-[10px]">Action</span>
+        </button>
+        <button onclick="closeCommandPalette(); window.location.href='/api/orders/export/csv';" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+            <span>Export QuickBooks CSV File</span>
+            <span class="text-ink-muted font-mono text-[10px]">Export</span>
+        </button>
+    `;
+}
+
+function handleCmdSearch(query) {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    const trimmed = query.trim();
+    if (!trimmed) {
+        renderDefaultCmdActions();
+        return;
+    }
+    searchDebounceTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/orders/search?q=${encodeURIComponent(trimmed)}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const container = document.getElementById('cmd-search-results');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let hasResults = false;
+
+            if (data.orders && data.orders.length > 0) {
+                hasResults = true;
+                container.innerHTML += `<div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">Orders</div>`;
+                data.orders.forEach(o => {
+                    container.innerHTML += `
+                        <button onclick="closeCommandPalette(); openOrderDetail(${o.id});" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+                            <span class="font-medium">Order #${o.id} • ${o.customer_name}</span>
+                            <span class="text-ink-muted text-[11px]">${o.status}</span>
+                        </button>
+                    `;
+                });
+            }
+
+            if (data.customers && data.customers.length > 0) {
+                hasResults = true;
+                container.innerHTML += `<div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted mt-2">Customers</div>`;
+                data.customers.forEach(c => {
+                    container.innerHTML += `
+                        <button onclick="closeCommandPalette(); switchTab('customers'); openCustomerModal(${c.id});" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+                            <span class="font-medium">${c.name}</span>
+                            <span class="text-ink-muted text-[11px]">${c.route}</span>
+                        </button>
+                    `;
+                });
+            }
+
+            if (data.products && data.products.length > 0) {
+                hasResults = true;
+                container.innerHTML += `<div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted mt-2">Products</div>`;
+                data.products.forEach(p => {
+                    container.innerHTML += `
+                        <button onclick="closeCommandPalette(); switchTab('products');" class="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-subtle flex items-center justify-between text-ink-primary">
+                            <span class="font-medium">[${p.sku}] ${p.name}</span>
+                            <span class="text-ink-muted font-mono text-[11px]">$${p.price.toFixed(2)}</span>
+                        </button>
+                    `;
+                });
+            }
+
+            if (!hasResults) {
+                container.innerHTML = `<div class="px-3 py-6 text-center text-xs text-ink-muted">No orders, customers, or products match "${trimmed}".</div>`;
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }, 150);
+}
+
+// -------------------------------------------------------------
+// 2. TAB & NAVIGATION CONTROLLER
 // -------------------------------------------------------------
 function switchTab(tabName, presetFilter = null) {
     currentTab = tabName;
@@ -32,12 +171,11 @@ function switchTab(tabName, presetFilter = null) {
         }
     });
 
-    // Update Top Context Header
     const contextMap = {
         'overview': 'Operations Overview',
         'orders': 'Wholesale Orders Feed',
-        'kitchen': 'Kitchen Production Batch Sheet',
-        'customers': 'Customer Accounts & Rules',
+        'kitchen': 'Kitchen Production Floor Sheet',
+        'customers': 'Customer Directory (CRM)',
         'products': 'Product Catalog Management',
         'brain': 'Rules & Business Knowledge',
         'copilot': 'Operations Assistant'
@@ -51,28 +189,201 @@ function switchTab(tabName, presetFilter = null) {
         filterStatus(presetFilter);
     }
 
-    if (tabName === 'overview' || tabName === 'orders') fetchOrders();
-    if (tabName === 'customers') fetchCustomers();
-    if (tabName === 'products') fetchCatalog();
-    if (tabName === 'brain') {
+    if (tabName === 'overview') {
+        renderOverviewDashboard();
+    } else if (tabName === 'orders') {
+        fetchOrders();
+    } else if (tabName === 'kitchen') {
+        fetchKitchenSheet();
+    } else if (tabName === 'customers') {
+        fetchCustomers();
+    } else if (tabName === 'products') {
+        fetchCatalog();
+    } else if (tabName === 'brain') {
         fetchMemories();
         fetchBusinessBrain();
     }
-    if (tabName === 'kitchen') fetchKitchenSheet();
 }
 
 // -------------------------------------------------------------
-// 2. DEMO SCENARIOS DRAWER CONTROLLER
+// 3. OVERVIEW DASHBOARD (SINGLE SOURCE OF TRUTH)
 // -------------------------------------------------------------
-function toggleDemoDrawer() {
-    const drawer = document.getElementById('demo-scenarios-drawer');
-    if (drawer) {
-        drawer.classList.toggle('hidden');
+async function renderOverviewDashboard() {
+    try {
+        const res = await fetch('/api/orders/dashboard-summary');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. Operational Briefing Greeting
+        const greetingEl = document.getElementById('overview-operational-greeting');
+        if (greetingEl) greetingEl.innerText = data.operational_brief;
+
+        // 2. Typographic Metrics
+        const totOrdersEl = document.getElementById('stat-total-orders');
+        const revOrdersEl = document.getElementById('stat-review-orders');
+        const totUnitsEl = document.getElementById('stat-total-units');
+        const totRevEl = document.getElementById('stat-total-rev');
+
+        if (totOrdersEl) totOrdersEl.innerText = data.metrics.orders_today;
+        if (revOrdersEl) revOrdersEl.innerText = data.metrics.needs_review;
+        if (totUnitsEl) totUnitsEl.innerText = data.metrics.approved_units;
+        if (totRevEl) totRevEl.innerText = `$${data.metrics.order_value.toFixed(2)}`;
+
+        // Update Nav Review Badge
+        const navBadge = document.getElementById('nav-badge-review');
+        if (navBadge) {
+            if (data.metrics.needs_review > 0) {
+                navBadge.innerText = data.metrics.needs_review;
+                navBadge.classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden');
+            }
+        }
+
+        // 3. Attention Required Section
+        const attContainer = document.getElementById('overview-attention-container');
+        const attSection = document.getElementById('overview-attention-section');
+
+        if (attContainer) {
+            attContainer.innerHTML = '';
+            if (data.attention_required.length === 0) {
+                if (attSection) attSection.classList.add('hidden');
+            } else {
+                if (attSection) attSection.classList.remove('hidden');
+                data.attention_required.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white border-l-4 border-l-amber-600 border border-surface-border rounded-xl p-4 shadow-sm space-y-2';
+                    card.innerHTML = `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="font-bold text-xs text-ink-primary">${item.customer_name}</span>
+                                <span class="text-[10px] font-mono text-ink-muted">Order #${item.order_id}</span>
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200/80">Needs Review</span>
+                            </div>
+                            <span class="text-[11px] text-ink-muted">${item.channel} · ${item.created_at}</span>
+                        </div>
+                        <div class="text-xs text-ink-secondary font-mono bg-surface-subtle p-2.5 rounded-lg border border-surface-border">
+                            "${item.raw_message}"
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pt-1 gap-2">
+                            <div class="text-[11px] text-amber-900 font-medium">
+                                ⚠️ Reason: ${item.anomaly_reason}
+                            </div>
+                            <button onclick="openOrderDetail(${item.order_id})" class="px-3 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition self-start sm:self-auto shadow-sm">
+                                Review order →
+                            </button>
+                        </div>
+                    `;
+                    attContainer.appendChild(card);
+                });
+            }
+        }
+
+        // 4. Recent Inbound Activity Stream
+        const actContainer = document.getElementById('overview-activity-stream');
+        if (actContainer) {
+            actContainer.innerHTML = '';
+            if (data.recent_activity.length === 0) {
+                actContainer.innerHTML = `<div class="text-xs text-ink-muted p-4 text-center">No recent orders recorded today.</div>`;
+            } else {
+                data.recent_activity.forEach(a => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-3 rounded-lg border border-surface-border bg-white text-xs';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono text-[11px] text-ink-muted">${a.timestamp}</span>
+                            <span class="font-semibold text-ink-primary">${a.customer_name}</span>
+                            <span class="text-ink-secondary truncate max-w-xs">${a.summary}</span>
+                        </div>
+                        <button onclick="openOrderDetail(${a.order_id})" class="text-xs text-ink-secondary hover:text-ink-primary font-medium">
+                            Inspect →
+                        </button>
+                    `;
+                    actContainer.appendChild(row);
+                });
+            }
+        }
+
+        // 5. Tomorrow's Production Summary Preview
+        const prodContainer = document.getElementById('overview-production-summary');
+        const cutoffEl = document.getElementById('overview-next-cutoff');
+        if (cutoffEl) cutoffEl.innerText = `Cutoff: ${data.whats_next.next_cutoff}`;
+
+        if (prodContainer) {
+            prodContainer.innerHTML = '';
+            if (data.whats_next.top_production.length === 0) {
+                prodContainer.innerHTML = `<div class="text-xs text-ink-muted p-4 text-center">No approved orders for tomorrow yet.</div>`;
+            } else {
+                data.whats_next.top_production.forEach(p => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-3 rounded-lg border border-surface-border bg-white text-xs';
+                    row.innerHTML = `
+                        <div>
+                            <span class="font-mono text-[10px] text-ink-muted mr-1.5">[${p.sku}]</span>
+                            <span class="font-medium text-ink-primary">${p.item_name}</span>
+                        </div>
+                        <span class="font-bold text-xs text-ink-primary font-mono">${p.quantity} units</span>
+                    `;
+                    prodContainer.appendChild(row);
+                });
+            }
+        }
+
+        // 6. Update Notification Center
+        updateNotifications(data.attention_required);
+
+    } catch (err) {
+        console.error('Error loading dashboard summary:', err);
     }
 }
 
 // -------------------------------------------------------------
-// 3. ORDERS FILTERING
+// 4. NOTIFICATIONS CENTER
+// -------------------------------------------------------------
+function initNotificationEvents() {
+    window.addEventListener('click', (e) => {
+        const notifDropdown = document.getElementById('notif-dropdown');
+        const notifBtn = document.getElementById('notif-btn');
+        if (notifDropdown && notifBtn && !notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+            notifDropdown.classList.add('hidden');
+        }
+    });
+}
+
+function toggleNotificationsDropdown() {
+    const dropdown = document.getElementById('notif-dropdown');
+    if (dropdown) dropdown.classList.toggle('hidden');
+}
+
+function updateNotifications(attentionList) {
+    const badge = document.getElementById('notif-badge');
+    const container = document.getElementById('notif-items-container');
+    if (!badge || !container) return;
+
+    if (attentionList && attentionList.length > 0) {
+        badge.innerText = attentionList.length;
+        badge.classList.remove('hidden');
+
+        container.innerHTML = '';
+        attentionList.forEach(a => {
+            container.innerHTML += `
+                <div onclick="document.getElementById('notif-dropdown').classList.add('hidden'); openOrderDetail(${a.order_id});" class="p-2 rounded-lg hover:bg-surface-subtle cursor-pointer border border-surface-border text-xs space-y-0.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-ink-primary">${a.customer_name}</span>
+                        <span class="text-[10px] text-amber-800 font-semibold">Action Required</span>
+                    </div>
+                    <div class="text-[11px] text-ink-secondary truncate">${a.anomaly_reason}</div>
+                </div>
+            `;
+        });
+    } else {
+        badge.classList.add('hidden');
+        container.innerHTML = `<div class="text-xs text-ink-muted py-3 text-center">No unread alerts. Operations smooth.</div>`;
+    }
+}
+
+// -------------------------------------------------------------
+// 5. ORDERS TABLE & FILTERING
 // -------------------------------------------------------------
 function filterStatus(status) {
     activeStatus = status;
@@ -95,409 +406,313 @@ function filterChannel(channel) {
     fetchOrders();
 }
 
-// -------------------------------------------------------------
-// 4. FETCH & RENDER LIVE ORDERS
-// -------------------------------------------------------------
+function handleOrdersSearch(e) {
+    fetchOrders();
+}
+
 async function fetchOrders() {
     try {
         let url = '/api/orders/?';
         if (activeStatus !== 'ALL') url += `status=${encodeURIComponent(activeStatus)}&`;
-        if (activeChannel !== 'ALL') url += `channel=${encodeURIComponent(activeChannel)}`;
+        if (activeChannel !== 'ALL') url += `channel=${encodeURIComponent(activeChannel)}&`;
+        
+        const searchVal = document.getElementById('orders-search-input')?.value;
+        if (searchVal && searchVal.trim()) url += `q=${encodeURIComponent(searchVal.trim())}`;
 
         const res = await fetch(url);
+        if (!res.ok) return;
         const orders = await res.json();
         cachedOrders = orders;
         
         const tbody = document.getElementById('orders-table-body');
-        if (tbody) tbody.innerHTML = '';
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-        let totalOrders = orders.length;
-        let reviewCount = 0;
-        let totalUnits = 0;
-        let totalRev = 0.0;
-        let attentionOrders = [];
+        if (orders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-xs text-ink-muted">No orders match these filters.</td></tr>`;
+            return;
+        }
 
         orders.forEach(order => {
-            const isApproved = (order.status === 'Approved' || order.status === 'Sent to Production' || order.status === 'Ready');
-            if (isApproved) {
-                totalRev += order.order_total;
-            }
-            if (order.status === 'Needs Review' || order.is_anomaly || order.is_duplicate) {
-                reviewCount++;
-                attentionOrders.push(order);
-            }
+            let statusPillClass = 'bg-surface-subtle text-ink-secondary border-surface-border';
+            if (order.status === 'Approved') statusPillClass = 'bg-emerald-50 text-emerald-800 border-emerald-200/60';
+            if (order.status === 'Sent to Production') statusPillClass = 'bg-indigo-50 text-indigo-800 border-indigo-200/60';
+            if (order.status === 'Needs Review') statusPillClass = 'bg-amber-50 text-amber-900 border-amber-200/60';
+            if (order.status === 'Rejected') statusPillClass = 'bg-rose-50 text-rose-800 border-rose-200/60';
 
-            let itemsHtml = '<div class="space-y-1">';
-            order.items.forEach(item => {
-                if (isApproved) totalUnits += item.quantity;
-                itemsHtml += `
-                    <div class="flex items-center justify-between text-xs text-ink-primary">
-                        <span><span class="font-mono text-ink-muted text-[10px]">[${item.sku}]</span> ${item.quantity}× ${item.item_name}</span>
-                        <span class="text-ink-secondary font-mono text-[11px]">$${item.line_total.toFixed(2)}</span>
-                    </div>
-                `;
-            });
-            itemsHtml += `
-                <div class="text-right text-[11px] font-bold text-ink-primary pt-1 border-t border-surface-border/60 font-mono">
-                    Total: $${order.order_total.toFixed(2)}
-                </div>
-            </div>`;
+            let itemsSummary = order.items.map(i => `${i.quantity}× ${i.item_name}`).join(', ');
+            if (itemsSummary.length > 45) itemsSummary = itemsSummary.substring(0, 45) + '...';
 
-            // Confidence Level (Plain English, Not AI Jargon)
-            let confBadge = '';
-            if (order.confidence_score >= 90) {
-                confBadge = `<span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> High confidence</span>`;
-            } else if (order.confidence_score >= 70) {
-                confBadge = `<span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span> Review recommended</span>`;
-            } else {
-                confBadge = `<span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-800"><span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Confirmation required</span>`;
-            }
+            let reasonText = 'Standard order — verified';
+            if (order.is_anomaly) reasonText = `⚠️ ${order.anomaly_reason}`;
+            else if (order.is_duplicate) reasonText = `⚠️ Suspected duplicate order`;
+            else if (order.history_cloned) reasonText = `✨ Cloned from recurring schedule`;
 
-            if (order.is_anomaly) {
-                confBadge += `<div class="text-[10px] font-semibold text-rose-800 mt-1">${order.anomaly_reason || 'Unusual quantity'}</div>`;
-            } else if (order.history_cloned) {
-                confBadge += `<div class="text-[10px] font-semibold text-ink-muted mt-1">Matched previous pattern</div>`;
-            }
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-surface-subtle/50 transition cursor-pointer';
+            tr.onclick = (e) => {
+                if (e.target.tagName !== 'BUTTON') openOrderDetail(order.id);
+            };
 
-            // Status Badge
-            let statusBadge = '';
-            if (order.status === 'Approved') {
-                statusBadge = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">Approved</span>`;
-            } else if (order.status === 'Sent to Production') {
-                statusBadge = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">In Production</span>`;
-            } else if (order.status === 'Needs Review') {
-                statusBadge = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/80">Needs Review</span>`;
-            } else if (order.status === 'Rejected') {
-                statusBadge = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200/60">Rejected</span>`;
-            } else {
-                statusBadge = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-surface-subtle text-ink-secondary">${order.status}</span>`;
-            }
-
-            if (tbody) {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-surface-subtle/50 transition cursor-pointer';
-                tr.innerHTML = `
-                    <td class="px-5 py-4 align-top" onclick="openOrderDetail(${order.id})">
-                        <div class="font-bold text-ink-primary text-xs">${order.customer_name}</div>
-                        <div class="text-[11px] text-ink-muted font-mono mt-0.5">${order.account_number} • ${order.customer_phone}</div>
-                        <div class="text-[11px] text-ink-secondary mt-1">${order.delivery_route}</div>
-                    </td>
-                    <td class="px-5 py-4 align-top max-w-xs" onclick="openOrderDetail(${order.id})">
-                        <div class="flex items-center gap-1.5 mb-1">
-                            <span class="text-[10px] font-medium px-1.5 py-0.2 rounded bg-surface-subtle border border-surface-border text-ink-secondary uppercase tracking-wider">${order.channel}</span>
-                            <span class="text-[10px] text-ink-muted">${order.created_at}</span>
-                        </div>
-                        <div class="text-xs text-ink-primary italic bg-surface-subtle/60 p-2.5 rounded-lg border border-surface-border">
-                            "${order.raw_message}"
-                        </div>
-                        <div class="text-[11px] text-ink-secondary mt-1.5 font-medium">${order.ai_interpretation_summary}</div>
-                    </td>
-                    <td class="px-5 py-4 align-top min-w-[200px]" onclick="openOrderDetail(${order.id})">
-                        ${itemsHtml}
-                    </td>
-                    <td class="px-5 py-4 align-top" onclick="openOrderDetail(${order.id})">
-                        ${confBadge}
-                    </td>
-                    <td class="px-5 py-4 align-top" onclick="openOrderDetail(${order.id})">
-                        ${statusBadge}
-                    </td>
-                    <td class="px-5 py-4 align-top text-right space-y-1.5">
-                        <button onclick="openOrderDetail(${order.id})" class="px-3 py-1.5 rounded-lg bg-surface-subtle hover:bg-surface-border text-ink-primary text-xs font-semibold border border-surface-border transition block w-full text-center">
-                            Review
-                        </button>
-                        ${order.status !== 'Approved' && order.status !== 'Sent to Production' ? `
-                            <button onclick="quickApproveOrder(${order.id})" class="px-3 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition block w-full text-center">
-                                Approve
-                            </button>
-                        ` : ''}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            }
-        });
-
-        // Update Overview & Navigation Metrics
-        updateMetrics(totalOrders, reviewCount, totalUnits, totalRev);
-        renderOverviewDashboard(attentionOrders, orders);
-
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function updateMetrics(orders, reviews, units, revenue) {
-    const elOrders = document.getElementById('stat-total-orders');
-    const elReviews = document.getElementById('stat-anomalies');
-    const elUnits = document.getElementById('stat-total-units');
-    const elRev = document.getElementById('stat-total-revenue');
-    const navBadge = document.getElementById('nav-badge-review');
-
-    if (elOrders) elOrders.innerText = orders;
-    if (elReviews) elReviews.innerText = reviews;
-    if (elUnits) elUnits.innerText = units;
-    if (elRev) elRev.innerText = `$${revenue.toFixed(2)}`;
-
-    if (navBadge) {
-        if (reviews > 0) {
-            navBadge.innerText = reviews;
-            navBadge.classList.remove('hidden');
-        } else {
-            navBadge.classList.add('hidden');
-        }
-    }
-}
-
-// -------------------------------------------------------------
-// 5. RENDER DASHBOARD OVERVIEW (ATTENTION REQUIRED & ACTIVITY)
-// -------------------------------------------------------------
-function renderOverviewDashboard(attentionOrders, allOrders) {
-    const greetingEl = document.getElementById('overview-operational-greeting');
-    const attentionCountBadge = document.getElementById('overview-attention-count-badge');
-    const attentionContainer = document.getElementById('overview-attention-container');
-    const activityStream = document.getElementById('overview-activity-stream');
-    const prodList = document.getElementById('overview-production-list');
-
-    // Contextual greeting
-    if (greetingEl) {
-        if (attentionOrders.length === 0) {
-            greetingEl.innerText = "All orders have been reviewed. Production queue is up to date.";
-        } else if (attentionOrders.length === 1) {
-            greetingEl.innerText = "1 order requires your review before kitchen cutoff at 11:00 PM.";
-        } else {
-            greetingEl.innerText = `${attentionOrders.length} orders require your review before kitchen cutoff at 11:00 PM.`;
-        }
-    }
-
-    if (attentionCountBadge) {
-        attentionCountBadge.innerText = attentionOrders.length;
-    }
-
-    // Render Attention Required Cards
-    if (attentionContainer) {
-        attentionContainer.innerHTML = '';
-        if (attentionOrders.length === 0) {
-            attentionContainer.innerHTML = `
-                <div class="p-6 bg-white border border-surface-border rounded-xl text-center space-y-1">
-                    <div class="text-xs font-semibold text-ink-primary">No orders need review</div>
-                    <div class="text-[11px] text-ink-muted">All incoming buyer orders are matched with high confidence.</div>
-                </div>
-            `;
-        } else {
-            attentionOrders.forEach(o => {
-                const card = document.createElement('div');
-                card.className = 'p-4 bg-white border border-surface-border rounded-xl shadow-sm hover:border-amber-400/60 transition flex flex-col md:flex-row md:items-center justify-between gap-4';
-                card.innerHTML = `
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-xs text-ink-primary">${o.customer_name}</span>
-                            <span class="text-[10px] font-medium text-ink-muted font-mono">${o.account_number}</span>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/60">${o.status}</span>
-                        </div>
-                        <div class="text-xs text-ink-secondary italic">
-                            "${o.raw_message}"
-                        </div>
-                        <div class="text-[11px] font-medium text-amber-900 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
-                            <span>${o.anomaly_reason || 'Requires manual confirmation of quantities or customer aliases'}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <button onclick="openOrderDetail(${o.id})" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
-                            Review order →
-                        </button>
-                    </div>
-                `;
-                attentionContainer.appendChild(card);
-            });
-        }
-    }
-
-    // Render Recent Inbound Activity Stream
-    if (activityStream) {
-        activityStream.innerHTML = '';
-        const recent = allOrders.slice(0, 5);
-        if (recent.length === 0) {
-            activityStream.innerHTML = `<div class="text-xs text-ink-muted py-3">No activity recorded today.</div>`;
-        } else {
-            recent.forEach(o => {
-                const item = document.createElement('div');
-                item.className = 'p-3 bg-white border border-surface-border rounded-xl flex items-center justify-between text-xs transition hover:border-ink-faint';
-                item.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="font-mono text-[10px] text-ink-muted">${o.created_at.split(' ')[1] || 'Today'}</span>
-                        <div>
-                            <span class="font-semibold text-ink-primary">${o.customer_name}</span>
-                            <span class="text-ink-secondary ml-1.5">placed order via ${o.channel}</span>
-                        </div>
-                    </div>
-                    <button onclick="openOrderDetail(${o.id})" class="text-xs font-semibold text-ink-secondary hover:text-ink-primary">
-                        View →
+            tr.innerHTML = `
+                <td class="px-5 py-3.5 font-semibold text-ink-primary">
+                    <div class="font-bold text-xs">#${order.id}</div>
+                    <div class="text-[10px] text-ink-muted font-mono">${order.created_at}</div>
+                </td>
+                <td class="px-5 py-3.5 text-ink-primary">
+                    <div class="font-bold text-xs">${order.customer_name}</div>
+                    <div class="text-[10px] text-ink-secondary">${order.channel} • ${order.account_number}</div>
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary text-xs">
+                    <div>${itemsSummary || 'No line items'}</div>
+                    <div class="text-[10px] text-ink-muted">${order.items.length} unique line items</div>
+                </td>
+                <td class="px-5 py-3.5 text-xs">
+                    <span class="${order.is_anomaly || order.is_duplicate ? 'text-amber-900 font-semibold' : 'text-ink-secondary'}">
+                        ${reasonText}
+                    </span>
+                </td>
+                <td class="px-5 py-3.5">
+                    <span class="border px-2 py-0.5 rounded text-[10px] font-semibold ${statusPillClass}">
+                        ${order.status}
+                    </span>
+                </td>
+                <td class="px-5 py-3.5 text-right font-mono font-bold text-xs text-ink-primary">
+                    $${order.order_total.toFixed(2)}
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <button onclick="openOrderDetail(${order.id})" class="px-2.5 py-1 rounded-lg border border-surface-border text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition">
+                        Review →
                     </button>
-                `;
-                activityStream.appendChild(item);
-            });
-        }
-    }
-
-    // Render Production Summary Widget
-    if (prodList) {
-        prodList.innerHTML = '';
-        fetch('/api/orders/kitchen-sheet')
-            .then(res => res.json())
-            .then(items => {
-                if (items.length === 0) {
-                    prodList.innerHTML = `<div class="text-xs text-ink-muted py-2 text-center">No production batches queued yet.</div>`;
-                    return;
-                }
-                items.slice(0, 4).forEach(it => {
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between py-1.5 border-b border-surface-border/50 text-xs';
-                    row.innerHTML = `
-                        <span class="font-medium text-ink-primary">${it.item_name}</span>
-                        <span class="font-mono font-bold text-ink-primary">${it.total_quantity} units</span>
-                    `;
-                    prodList.appendChild(row);
-                });
-            })
-            .catch(err => console.error(err));
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error('Error fetching orders:', err);
     }
 }
 
 // -------------------------------------------------------------
-// 6. ORDER DETAIL DRAWER & HUMAN REVIEW CONTROLS
+// 6. ORDER DETAIL DRAWER & ACTIONS
 // -------------------------------------------------------------
 async function openOrderDetail(orderId) {
     currentDetailOrderId = orderId;
     try {
         const res = await fetch(`/api/orders/${orderId}`);
+        if (!res.ok) {
+            alert('Order not found in this workspace.');
+            return;
+        }
         const order = await res.json();
         currentDetailOrder = order;
 
-        document.getElementById('detail-order-id').innerText = `#${order.id}`;
-        document.getElementById('detail-customer-header').innerText = `${order.customer_name} (${order.account_number}) • ${order.delivery_route} • ${order.pricing_tier}`;
-        document.getElementById('detail-raw-msg').innerText = `"${order.raw_message}"`;
-        document.getElementById('detail-ai-summary').innerText = order.ai_interpretation_summary;
+        document.getElementById('drawer-order-id').innerText = `Order #${order.id}`;
+        
+        const statusPill = document.getElementById('drawer-status-pill');
+        statusPill.innerText = order.status;
+        statusPill.className = 'text-[10px] font-semibold px-2 py-0.5 rounded border ';
+        if (order.status === 'Approved') statusPill.className += 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        else if (order.status === 'Needs Review') statusPill.className += 'bg-amber-50 text-amber-900 border-amber-200';
+        else statusPill.className += 'bg-surface-subtle text-ink-secondary border-surface-border';
 
-        const pill = document.getElementById('detail-status-pill');
-        if (pill) {
-            pill.innerText = order.status;
-            if (order.status === 'Approved') {
-                pill.className = 'px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/60';
-            } else if (order.status === 'Needs Review') {
-                pill.className = 'px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200/80';
-            } else {
-                pill.className = 'px-2.5 py-0.5 rounded text-[10px] font-bold bg-surface-subtle text-ink-secondary';
-            }
-        }
-
-        renderDetailItemsTable(order);
-
-        // Render Audit Timeline
-        const timelineList = document.getElementById('detail-timeline-list');
-        timelineList.innerHTML = '';
-        if (order.timeline && order.timeline.length > 0) {
-            order.timeline.forEach(t => {
-                const div = document.createElement('div');
-                div.className = 'text-xs text-ink-primary flex items-start justify-between border-b border-surface-border/50 pb-1';
-                div.innerHTML = `
-                    <div>
-                        <span class="text-brand-800 font-bold font-mono text-[10px]">[${t.event_type}]</span>
-                        <span class="text-ink-secondary font-medium">${t.actor}:</span>
-                        <span class="text-ink-primary">${t.description}</span>
-                    </div>
-                    <span class="text-[10px] text-ink-muted font-mono whitespace-nowrap ml-3">${t.created_at}</span>
-                `;
-                timelineList.appendChild(div);
-            });
+        // Duplicate Banner
+        const dupBanner = document.getElementById('drawer-duplicate-banner');
+        if (order.is_duplicate) {
+            dupBanner.classList.remove('hidden');
         } else {
-            timelineList.innerHTML = '<div class="text-xs text-ink-muted italic">No previous modifications recorded.</div>';
+            dupBanner.classList.add('hidden');
         }
 
-        document.getElementById('order-detail-modal').classList.remove('hidden');
+        // Inbound raw message
+        document.getElementById('drawer-inbound-meta').innerText = `${order.channel} · ${order.created_at}`;
+        document.getElementById('drawer-raw-message').innerText = order.raw_message;
+
+        // Customer Profile
+        document.getElementById('drawer-cust-acc').innerText = order.account_number;
+        document.getElementById('drawer-cust-route').innerText = order.delivery_route;
+        document.getElementById('drawer-cust-tier').innerText = `${order.pricing_tier} (${order.discount_percentage}% off)`;
+        document.getElementById('drawer-cust-day').innerText = order.usual_order_day || 'Schedule active';
+        document.getElementById('drawer-cust-notes').innerText = `Instructions: ${order.special_instructions || 'None'}`;
+        document.getElementById('drawer-ai-summary').innerText = order.ai_interpretation_summary || 'Standard line items parsed.';
+
+        // Order Items Table
+        renderDrawerItems(order.items, order.order_total);
+
+        // Audit Trail Timeline
+        const timelineContainer = document.getElementById('drawer-timeline-container');
+        timelineContainer.innerHTML = '';
+        order.timeline.forEach(t => {
+            const el = document.createElement('div');
+            el.className = 'relative pl-2';
+            el.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-ink-primary">${t.event_type}</span>
+                    <span class="text-[10px] text-ink-muted font-mono">${t.created_at}</span>
+                </div>
+                <div class="text-ink-secondary text-[11px] mt-0.5">${t.description}</div>
+                <div class="text-[10px] text-ink-muted">Actor: ${t.actor}</div>
+            `;
+            timelineContainer.appendChild(el);
+        });
+
+        document.getElementById('order-detail-drawer').classList.remove('hidden');
     } catch (err) {
         console.error(err);
     }
 }
 
-function renderDetailItemsTable(order) {
-    const tbody = document.getElementById('detail-items-tbody');
+function renderDrawerItems(items, total) {
+    const tbody = document.getElementById('drawer-items-body');
     tbody.innerHTML = '';
-    let total = 0.0;
-
-    order.items.forEach(item => {
-        total += item.line_total;
+    items.forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="px-4 py-2 font-mono text-ink-secondary font-semibold">${item.sku}</td>
-            <td class="px-4 py-2 font-semibold text-ink-primary">
-                <input type="text" id="edit-name-${item.id}" value="${item.item_name}" class="bg-surface-subtle border border-surface-border rounded px-2 py-0.5 text-xs text-ink-primary w-44">
+            <td class="px-3 py-2 font-mono text-[11px] text-ink-muted">${item.sku}</td>
+            <td class="px-3 py-2 font-medium">${item.item_name}</td>
+            <td class="px-3 py-2 text-center">
+                <input type="number" min="1" value="${item.quantity}" onchange="updateItemQty(${item.id}, this.value)" class="w-14 text-center border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono font-bold">
             </td>
-            <td class="px-4 py-2">
-                <input type="number" id="edit-qty-${item.id}" value="${item.quantity}" min="1" class="bg-surface-subtle border border-surface-border rounded px-2 py-0.5 text-xs text-ink-primary w-16 font-mono">
-            </td>
-            <td class="px-4 py-2 text-ink-muted font-mono">$${item.unit_price.toFixed(2)}</td>
-            <td class="px-4 py-2 font-mono text-ink-primary">
-                $<input type="number" step="0.01" id="edit-price-${item.id}" value="${item.customer_price.toFixed(2)}" class="bg-surface-subtle border border-surface-border rounded px-1.5 py-0.5 text-xs text-brand-800 font-bold w-16 inline font-mono">
-            </td>
-            <td class="px-4 py-2 font-mono font-bold text-ink-primary">$${item.line_total.toFixed(2)}</td>
-            <td class="px-4 py-2 text-right space-x-2">
-                <button onclick="saveItemEdit(${item.id})" class="text-brand-800 hover:text-brand-900 font-bold">Save</button>
-                <button onclick="deleteItemRow(${item.id})" class="text-rose-800 hover:text-rose-900 font-semibold">Remove</button>
+            <td class="px-3 py-2 text-right font-mono text-ink-secondary">$${item.customer_price.toFixed(2)}</td>
+            <td class="px-3 py-2 text-right font-mono font-bold">$${item.line_total.toFixed(2)}</td>
+            <td class="px-3 py-2 text-right">
+                <button onclick="deleteItemFromOrder(${item.id})" class="text-rose-700 hover:text-rose-900 text-xs">&times;</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
-
-    document.getElementById('detail-order-total-sum').innerText = `Order Total: $${total.toFixed(2)}`;
+    document.getElementById('drawer-order-total').innerText = `$${total.toFixed(2)}`;
 }
 
-async function saveItemEdit(itemId) {
-    const qty = parseInt(document.getElementById(`edit-qty-${itemId}`).value) || 1;
-    const name = document.getElementById(`edit-name-${itemId}`).value;
-    const price = parseFloat(document.getElementById(`edit-price-${itemId}`).value) || 0.0;
+function closeOrderDrawer() {
+    const drawer = document.getElementById('order-detail-drawer');
+    if (drawer) drawer.classList.add('hidden');
+    currentDetailOrderId = null;
+    currentDetailOrder = null;
+}
+
+async function approveCurrentOrder() {
+    if (!currentDetailOrderId) return;
+    try {
+        const res = await fetch(`/api/orders/${currentDetailOrderId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Approved', actor: 'Alex (Operations)' })
+        });
+        if (res.ok) {
+            openOrderDetail(currentDetailOrderId);
+            if (currentTab === 'overview') renderOverviewDashboard();
+            else fetchOrders();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function sendCurrentOrderToProduction() {
+    if (!currentDetailOrderId) return;
+    try {
+        const res = await fetch(`/api/orders/${currentDetailOrderId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Sent to Production', actor: 'Alex (Operations)' })
+        });
+        if (res.ok) {
+            openOrderDetail(currentDetailOrderId);
+            if (currentTab === 'overview') renderOverviewDashboard();
+            else fetchOrders();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function rejectCurrentOrder() {
+    if (!currentDetailOrderId) return;
+    if (!confirm('Reject this order and notify customer?')) return;
+    try {
+        const res = await fetch(`/api/orders/${currentDetailOrderId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Rejected', actor: 'Alex (Operations)', notes: 'Customer notified of cancellation.' })
+        });
+        if (res.ok) {
+            openOrderDetail(currentDetailOrderId);
+            if (currentTab === 'overview') renderOverviewDashboard();
+            else fetchOrders();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function requestClarification() {
+    if (!currentDetailOrderId) return;
+    try {
+        const res = await fetch(`/api/orders/${currentDetailOrderId}/clarification`, {
+            method: 'POST'
+        });
+        if (res.ok) {
+            alert('Clarification request sent to buyer and recorded in audit trail.');
+            openOrderDetail(currentDetailOrderId);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function updateItemQty(itemId, newQty) {
+    if (!currentDetailOrderId || !currentDetailOrder) return;
     const item = currentDetailOrder.items.find(i => i.id === itemId);
-    const sku = item ? item.sku : "MISC-001";
+    if (!item) return;
 
     try {
         await fetch(`/api/orders/${currentDetailOrderId}/items/${itemId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity: qty, item_name: name, matched_sku: sku, unit_price: price })
+            body: JSON.stringify({
+                quantity: parseInt(newQty) || 1,
+                item_name: item.item_name,
+                matched_sku: item.sku,
+                unit_price: item.customer_price
+            })
         });
         openOrderDetail(currentDetailOrderId);
-        fetchOrders();
     } catch (err) {
-        alert('Error saving line item edit.');
+        console.error(err);
     }
 }
 
-async function deleteItemRow(itemId) {
-    if (!confirm('Remove this line item from order?')) return;
+async function deleteItemFromOrder(itemId) {
+    if (!currentDetailOrderId) return;
     try {
-        await fetch(`/api/orders/${currentDetailOrderId}/items/${itemId}`, { method: 'DELETE' });
+        await fetch(`/api/orders/${currentDetailOrderId}/items/${itemId}`, {
+            method: 'DELETE'
+        });
         openOrderDetail(currentDetailOrderId);
-        fetchOrders();
     } catch (err) {
         console.error(err);
     }
 }
 
 function openAddItemModal() {
+    const modal = document.getElementById('add-item-modal');
     const select = document.getElementById('add-item-prod-select');
+    if (!select) return;
     select.innerHTML = '';
     cachedCatalog.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.innerText = `[${p.sku}] ${p.name} ($${p.unit_price.toFixed(2)})`;
-        select.appendChild(opt);
+        select.innerHTML += `<option value="${p.id}">[${p.sku}] ${p.name} ($${p.unit_price.toFixed(2)})</option>`;
     });
-    document.getElementById('add-item-modal').classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
 }
+
 function closeAddItemModal() {
-    document.getElementById('add-item-modal').classList.add('hidden');
+    const modal = document.getElementById('add-item-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 async function submitAddItemToOrder() {
+    if (!currentDetailOrderId) return;
     const prodId = parseInt(document.getElementById('add-item-prod-select').value);
     const qty = parseInt(document.getElementById('add-item-qty').value) || 1;
 
@@ -509,83 +724,91 @@ async function submitAddItemToOrder() {
         });
         closeAddItemModal();
         openOrderDetail(currentDetailOrderId);
-        fetchOrders();
-    } catch (err) {
-        alert('Error adding item.');
-    }
-}
-
-async function updateStatusCurrentOrder(newStatus) {
-    try {
-        await fetch(`/api/orders/${currentDetailOrderId}/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, actor: 'Staff Member', notes: 'Status updated via Review Cockpit' })
-        });
-        closeOrderDetailModal();
-        fetchOrders();
-    } catch (err) {
-        alert('Error updating order status.');
-    }
-}
-
-async function quickApproveOrder(orderId) {
-    try {
-        await fetch(`/api/orders/${orderId}/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'Approved', actor: 'Staff Member', notes: 'Quick Approved from feed' })
-        });
-        fetchOrders();
     } catch (err) {
         console.error(err);
     }
 }
 
-async function requestClarificationCurrentOrder() {
-    try {
-        await fetch(`/api/orders/${currentDetailOrderId}/clarification`, { method: 'POST' });
-        alert('Clarification SMS dispatched to customer.');
-        openOrderDetail(currentDetailOrderId);
-        fetchOrders();
-    } catch (err) {
-        alert('Error requesting clarification.');
-    }
+// -------------------------------------------------------------
+// 7. PRODUCTION BATCH SHEET (PRINTABLE & TRACEABLE)
+// -------------------------------------------------------------
+function switchProductionShift(shift) {
+    currentShift = shift;
+    ['Morning', 'Afternoon', 'Evening', 'All Day'].forEach(s => {
+        const btn = document.getElementById(`shift-btn-${s}`);
+        if (btn) {
+            if (s === shift) {
+                btn.className = 'px-3 py-1.5 rounded-md bg-ink-primary text-white transition';
+            } else {
+                btn.className = 'px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition';
+            }
+        }
+    });
+    fetchKitchenSheet();
 }
 
-function closeOrderDetailModal() {
-    document.getElementById('order-detail-modal').classList.add('hidden');
-}
-
-// -------------------------------------------------------------
-// 7. CUSTOMER MANAGEMENT (CRM-LITE)
-// -------------------------------------------------------------
-async function fetchCustomers() {
+async function fetchKitchenSheet() {
     try {
-        const res = await fetch('/api/orders/customers/list');
-        const customers = await res.json();
-        const tbody = document.getElementById('customers-table-body');
+        const res = await fetch(`/api/orders/production/sheet?shift=${encodeURIComponent(currentShift)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Populate Summary
+        document.getElementById('prod-sum-orders').innerText = data.summary.total_approved_orders;
+        document.getElementById('prod-sum-skus').innerText = data.summary.total_products;
+        document.getElementById('prod-sum-units').innerText = data.summary.total_units_required;
+        document.getElementById('prod-sum-completed').innerText = data.summary.total_units_completed;
+        document.getElementById('prod-sum-remaining').innerText = data.summary.remaining_units;
+
+        // Populate Print Headers
+        const printShiftEl = document.getElementById('print-shift');
+        if (printShiftEl) printShiftEl.innerText = `Shift: ${data.shift}`;
+
+        const tbody = document.getElementById('kitchen-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        customers.forEach(c => {
+        if (data.items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-5 py-8 text-center text-xs text-ink-muted">No approved production requirements for this shift.</td></tr>`;
+            return;
+        }
+
+        data.items.forEach(it => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-surface-subtle/50 transition';
+
+            let statusBadge = 'bg-surface-subtle text-ink-secondary';
+            if (it.production_status === 'In Progress') statusBadge = 'bg-amber-50 text-amber-900 border border-amber-200';
+            if (it.production_status === 'Completed') statusBadge = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
+
             tr.innerHTML = `
-                <td class="px-4 py-3 font-mono text-ink-secondary font-semibold">${c.account_number}</td>
-                <td class="px-4 py-3">
-                    <div class="font-bold text-ink-primary">${c.business_name}</div>
-                    <div class="text-ink-secondary text-[11px]">${c.contact_name} • ${c.email}</div>
+                <td class="px-5 py-3.5 font-semibold text-ink-primary">
+                    <span class="font-mono text-[10px] text-ink-muted mr-1">[${it.sku}]</span>
+                    ${it.item_name}
                 </td>
-                <td class="px-4 py-3 font-mono text-xs">
-                    <div>${c.phone_number}</div>
-                    <div class="text-[10px] text-ink-muted">${c.enabled_channels}</div>
+                <td class="px-5 py-3.5 text-center font-mono font-bold text-xs text-ink-primary">
+                    ${it.required_quantity} ${it.unit}
                 </td>
-                <td class="px-4 py-3 text-ink-secondary font-medium">${c.delivery_route}</td>
-                <td class="px-4 py-3 font-mono font-bold text-brand-800">${c.pricing_tier} (${c.discount_percentage}% off)</td>
-                <td class="px-4 py-3 text-ink-secondary italic">${c.special_instructions || '—'}</td>
-                <td class="px-4 py-3 text-right">
-                    <button onclick="openCustomerEditModal(${c.id})" class="text-xs text-ink-primary hover:text-black font-semibold">Edit Profile</button>
+                <td class="px-5 py-3.5 text-center font-mono text-xs text-emerald-800 font-semibold">
+                    ${it.completed_quantity}
+                </td>
+                <td class="px-5 py-3.5 text-center font-mono font-bold text-xs text-amber-800">
+                    ${it.remaining_quantity}
+                </td>
+                <td class="px-5 py-3.5 text-center">
+                    <button onclick="openContributingOrdersModal('${it.sku}', '${it.item_name}')" class="px-2.5 py-1 rounded bg-surface-subtle border border-surface-border hover:bg-surface-border text-xs text-ink-primary transition">
+                        ${it.order_count} orders →
+                    </button>
+                </td>
+                <td class="px-5 py-3.5">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${statusBadge}">
+                        ${it.production_status}
+                    </span>
+                </td>
+                <td class="no-print px-5 py-3.5 text-right">
+                    <button onclick="promptProgressUpdate('${it.sku}', ${it.required_quantity}, ${it.completed_quantity})" class="text-xs text-ink-primary font-semibold hover:underline">
+                        Update Progress
+                    </button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -595,80 +818,188 @@ async function fetchCustomers() {
     }
 }
 
-async function openCustomerEditModal(custId) {
+async function promptProgressUpdate(sku, reqQty, currentComp) {
+    const input = prompt(`Update completed batch quantity for SKU ${sku} (Required: ${reqQty}):`, currentComp);
+    if (input === null) return;
+    const completed = parseInt(input) || 0;
+    const status = completed >= reqQty ? 'Completed' : (completed > 0 ? 'In Progress' : 'Pending');
+
     try {
-        const res = await fetch(`/api/orders/customers/${custId}`);
-        const c = await res.json();
-
-        document.getElementById('cust-edit-id').value = c.id;
-        document.getElementById('cust-edit-name').value = c.business_name;
-        document.getElementById('cust-edit-contact').value = c.contact_name;
-        document.getElementById('cust-edit-phone').value = c.phone_number;
-        document.getElementById('cust-edit-route').value = c.delivery_route;
-        document.getElementById('cust-edit-discount').value = c.discount_percentage;
-        document.getElementById('cust-edit-instructions').value = c.special_instructions;
-
-        document.getElementById('customer-edit-modal').classList.remove('hidden');
+        await fetch('/api/orders/production/update-progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sku: sku, completed_quantity: completed, status: status })
+        });
+        fetchKitchenSheet();
     } catch (err) {
         console.error(err);
     }
 }
-function closeCustomerModal() {
-    document.getElementById('customer-edit-modal').classList.add('hidden');
-}
 
-async function submitCustomerUpdate() {
-    const custId = document.getElementById('cust-edit-id').value;
-    const name = document.getElementById('cust-edit-name').value;
-    const contact = document.getElementById('cust-edit-contact').value;
-    const phone = document.getElementById('cust-edit-phone').value;
-    const route = document.getElementById('cust-edit-route').value;
-    const discount = parseFloat(document.getElementById('cust-edit-discount').value) || 0.0;
-    const instructions = document.getElementById('cust-edit-instructions').value;
+async function openContributingOrdersModal(sku, itemName) {
+    const modal = document.getElementById('contributing-orders-modal');
+    const title = document.getElementById('contrib-modal-title');
+    const tbody = document.getElementById('contrib-orders-body');
+    if (title) title.innerText = `Contributing Orders: [${sku}] ${itemName}`;
 
     try {
-        await fetch(`/api/orders/customers/${custId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                business_name: name,
-                contact_name: contact,
-                phone_number: phone,
-                email: '',
-                delivery_route: route,
-                pricing_tier: discount > 0 ? `Tier Discount (-${discount}%)` : "Wholesale Standard",
-                discount_percentage: discount,
-                special_instructions: instructions,
-                enabled_channels: "SMS, WhatsApp, Email"
-            })
-        });
-        closeCustomerModal();
-        fetchCustomers();
+        const res = await fetch(`/api/orders/production/contributing-orders?sku=${encodeURIComponent(sku)}&shift=${encodeURIComponent(currentShift)}`);
+        if (!res.ok) return;
+        const orders = await res.json();
+        if (tbody) {
+            tbody.innerHTML = '';
+            orders.forEach(o => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="px-3 py-2 font-mono font-bold">#${o.order_id}</td>
+                        <td class="px-3 py-2 font-medium">${o.customer_name} (${o.account_number})</td>
+                        <td class="px-3 py-2 text-ink-muted text-[11px]">${o.route}</td>
+                        <td class="px-3 py-2 text-center font-mono font-bold">${o.quantity} units</td>
+                        <td class="px-3 py-2 text-right"><span class="text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded">${o.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+        if (modal) modal.classList.remove('hidden');
     } catch (err) {
-        alert('Error saving customer profile.');
+        console.error(err);
     }
 }
 
-function openAddCustomerModal() {
-    document.getElementById('cust-edit-id').value = '';
-    document.getElementById('cust-edit-name').value = '';
-    document.getElementById('cust-edit-contact').value = '';
-    document.getElementById('cust-edit-phone').value = '+1555';
-    document.getElementById('cust-edit-route').value = 'Route A - Downtown Core';
-    document.getElementById('cust-edit-discount').value = '0';
-    document.getElementById('cust-edit-instructions').value = '';
-    document.getElementById('customer-edit-modal').classList.remove('hidden');
+function closeContributingOrdersModal() {
+    const modal = document.getElementById('contributing-orders-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function exportCurrentProductionCsv() {
+    window.location.href = `/api/orders/production/export?shift=${encodeURIComponent(currentShift)}`;
 }
 
 // -------------------------------------------------------------
-// 8. PRODUCT CATALOG MANAGEMENT
+// 8. CUSTOMER DIRECTORY (CRM-LITE)
+// -------------------------------------------------------------
+async function fetchCustomers() {
+    try {
+        const res = await fetch('/api/orders/customers/list');
+        if (!res.ok) return;
+        const customers = await res.json();
+        const tbody = document.getElementById('customers-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        customers.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-surface-subtle/50 transition';
+            tr.innerHTML = `
+                <td class="px-5 py-3.5 font-semibold text-ink-primary">
+                    <div class="font-bold text-xs">${c.business_name}</div>
+                    <div class="text-[10px] text-ink-muted font-mono">${c.account_number} • ${c.order_count} orders placed</div>
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary">
+                    <div>${c.contact_name || 'Owner'}</div>
+                    <div class="text-[10px] text-ink-muted font-mono">${c.phone_number}</div>
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary font-medium">
+                    ${c.delivery_route}
+                </td>
+                <td class="px-5 py-3.5">
+                    <span class="bg-surface-subtle border border-surface-border text-ink-primary text-[10px] font-semibold px-2 py-0.5 rounded">
+                        ${c.pricing_tier} (-${c.discount_percentage}%)
+                    </span>
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary text-[11px]">
+                    ${c.usual_order_day || 'Regular'}
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <button onclick="openCustomerModal(${c.id})" class="text-xs text-ink-primary font-semibold hover:underline">
+                        Edit Profile →
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function openCustomerModal(id = null) {
+    const modal = document.getElementById('customer-edit-modal');
+    document.getElementById('cust-edit-id').value = id || '';
+    if (id) {
+        document.getElementById('cust-modal-title').innerText = 'Edit Customer Profile';
+        fetch(`/api/orders/customers/${id}`)
+            .then(res => res.json())
+            .then(c => {
+                document.getElementById('cust-edit-name').value = c.business_name;
+                document.getElementById('cust-edit-contact').value = c.contact_name || '';
+                document.getElementById('cust-edit-phone').value = c.phone_number;
+                document.getElementById('cust-edit-route').value = c.delivery_route;
+                document.getElementById('cust-edit-discount').value = c.discount_percentage;
+                document.getElementById('cust-edit-instructions').value = c.special_instructions || '';
+            });
+    } else {
+        document.getElementById('cust-modal-title').innerText = 'Add Customer Account';
+        document.getElementById('cust-edit-name').value = '';
+        document.getElementById('cust-edit-contact').value = '';
+        document.getElementById('cust-edit-phone').value = '';
+        document.getElementById('cust-edit-route').value = 'Route A - Downtown Core';
+        document.getElementById('cust-edit-discount').value = '0';
+        document.getElementById('cust-edit-instructions').value = '';
+    }
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCustomerModal() {
+    const modal = document.getElementById('customer-edit-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function submitCustomerSave() {
+    const id = document.getElementById('cust-edit-id').value;
+    const payload = {
+        business_name: document.getElementById('cust-edit-name').value,
+        contact_name: document.getElementById('cust-edit-contact').value,
+        phone_number: document.getElementById('cust-edit-phone').value,
+        delivery_route: document.getElementById('cust-edit-route').value,
+        pricing_tier: 'Wholesale Tier',
+        discount_percentage: parseFloat(document.getElementById('cust-edit-discount').value) || 0.0,
+        special_instructions: document.getElementById('cust-edit-instructions').value,
+        enabled_channels: 'SMS, WhatsApp, Email'
+    };
+
+    try {
+        if (id) {
+            await fetch(`/api/orders/customers/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            await fetch('/api/orders/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        closeCustomerModal();
+        fetchCustomers();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// -------------------------------------------------------------
+// 9. PRODUCT CATALOG
 // -------------------------------------------------------------
 async function fetchCatalog() {
     try {
         const res = await fetch('/api/orders/catalog');
+        if (!res.ok) return;
         const products = await res.json();
         cachedCatalog = products;
-        const tbody = document.getElementById('catalog-table-body');
+
+        const tbody = document.getElementById('products-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
 
@@ -676,14 +1007,28 @@ async function fetchCatalog() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-surface-subtle/50 transition';
             tr.innerHTML = `
-                <td class="px-4 py-3 font-mono text-ink-secondary font-semibold">${p.sku}</td>
-                <td class="px-4 py-3 font-bold text-ink-primary">${p.name}</td>
-                <td class="px-4 py-3 text-ink-secondary">${p.category}</td>
-                <td class="px-4 py-3 text-brand-800 font-mono font-bold">$${p.unit_price.toFixed(2)} / ${p.unit}</td>
-                <td class="px-4 py-3 font-mono text-ink-primary">${p.stock_available}</td>
-                <td class="px-4 py-3 text-ink-secondary italic">${p.aliases || '—'}</td>
-                <td class="px-4 py-3 text-right">
-                    <button onclick="deleteProduct(${p.id})" class="text-rose-800 hover:text-rose-900 font-semibold text-xs">Delete</button>
+                <td class="px-5 py-3.5 font-mono font-bold text-xs text-ink-primary">
+                    ${p.sku}
+                </td>
+                <td class="px-5 py-3.5 font-semibold text-ink-primary">
+                    ${p.name}
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary">
+                    ${p.category}
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary font-mono text-[11px]">
+                    ${p.unit}
+                </td>
+                <td class="px-5 py-3.5 font-mono font-bold text-xs text-ink-primary">
+                    $${p.unit_price.toFixed(2)}
+                </td>
+                <td class="px-5 py-3.5 text-ink-secondary text-[11px] truncate max-w-xs">
+                    ${p.aliases || 'None'}
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <button onclick="archiveProduct(${p.id})" class="text-xs text-rose-700 hover:text-rose-900 font-semibold">
+                        Archive
+                    </button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -694,21 +1039,24 @@ async function fetchCatalog() {
 }
 
 function openAddProductModal() {
-    document.getElementById('add-product-modal').classList.remove('hidden');
+    const modal = document.getElementById('add-product-modal');
+    if (modal) modal.classList.remove('hidden');
 }
+
 function closeAddProductModal() {
-    document.getElementById('add-product-modal').classList.add('hidden');
+    const modal = document.getElementById('add-product-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 async function submitNewProduct() {
     const sku = document.getElementById('new-prod-sku').value;
     const name = document.getElementById('new-prod-name').value;
     const unit = document.getElementById('new-prod-unit').value;
-    const price = parseFloat(document.getElementById('new-prod-price').value) || 0;
+    const price = parseFloat(document.getElementById('new-prod-price').value) || 0.0;
     const aliases = document.getElementById('new-prod-aliases').value;
 
     if (!sku || !name) {
-        alert('Please provide SKU and Product Name.');
+        alert('Please fill out SKU and Item Name.');
         return;
     }
 
@@ -716,19 +1064,19 @@ async function submitNewProduct() {
         await fetch('/api/orders/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sku, name, unit, unit_price: price, aliases, stock_available: 100, category: 'Bakery' })
+            body: JSON.stringify({ sku, name, unit, unit_price: price, aliases, stock_available: 100 })
         });
         closeAddProductModal();
         fetchCatalog();
     } catch (err) {
-        alert('Error adding product.');
+        console.error(err);
     }
 }
 
-async function deleteProduct(prodId) {
-    if (!confirm('Remove product from catalog?')) return;
+async function archiveProduct(id) {
+    if (!confirm('Archive this product? Historical orders will retain existing details.')) return;
     try {
-        await fetch(`/api/orders/products/${prodId}`, { method: 'DELETE' });
+        await fetch(`/api/orders/products/${id}`, { method: 'DELETE' });
         fetchCatalog();
     } catch (err) {
         console.error(err);
@@ -736,60 +1084,47 @@ async function deleteProduct(prodId) {
 }
 
 // -------------------------------------------------------------
-// 9. BUSINESS RULES & BRAIN POLICIES
+// 10. RULES & BUSINESS KNOWLEDGE
 // -------------------------------------------------------------
 async function fetchBusinessBrain() {
     try {
         const res = await fetch('/api/orders/business/brain');
+        if (!res.ok) return;
         const b = await res.json();
-        
-        const headerName = document.getElementById('header-business-name');
-        const sidebarName = document.getElementById('sidebar-business-name');
-        if (headerName) headerName.innerText = b.name;
-        if (sidebarName) sidebarName.innerText = b.name;
-
-        const elName = document.getElementById('brain-name');
-        const elCutoff = document.getElementById('brain-cutoff');
-        const elMinOrder = document.getElementById('brain-min-order');
-        const elFaq = document.getElementById('brain-faq');
-
-        if (elName) elName.value = b.name;
-        if (elCutoff) elCutoff.value = b.order_cutoff_time;
-        if (elMinOrder) elMinOrder.value = b.minimum_order_amount;
-        if (elFaq) elFaq.value = b.business_faq;
+        document.getElementById('brain-cutoff').value = b.order_cutoff_time || '23:00';
+        document.getElementById('brain-min-order').value = b.minimum_order_amount || 35.0;
+        document.getElementById('brain-faq').value = b.business_faq || '';
+        document.getElementById('header-business-name').innerText = b.name || 'Hudson Artisan Wholesale';
+        document.getElementById('sidebar-business-name').innerText = b.name || 'Hudson Artisan Wholesale';
+        const printBakeryEl = document.getElementById('print-bakery-name');
+        if (printBakeryEl) printBakeryEl.innerText = b.name || 'Hudson Artisan Wholesale';
     } catch (err) {
         console.error(err);
     }
 }
 
 async function saveBusinessBrain() {
-    const name = document.getElementById('brain-name').value;
     const cutoff = document.getElementById('brain-cutoff').value;
-    const minOrder = parseFloat(document.getElementById('brain-min-order').value) || 0;
+    const minOrder = parseFloat(document.getElementById('brain-min-order').value) || 35.0;
     const faq = document.getElementById('brain-faq').value;
 
     try {
         await fetch('/api/orders/business/brain', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: name,
-                order_cutoff_time: cutoff,
-                minimum_order_amount: minOrder,
-                business_faq: faq
-            })
+            body: JSON.stringify({ order_cutoff_time: cutoff, minimum_order_amount: minOrder, business_faq: faq })
         });
-        document.getElementById('header-business-name').innerText = name;
-        document.getElementById('sidebar-business-name').innerText = name;
-        alert('Business policies updated successfully.');
+        alert('Wholesale operating policies updated.');
+        fetchBusinessBrain();
     } catch (err) {
-        alert('Error saving policies.');
+        console.error(err);
     }
 }
 
 async function fetchMemories() {
     try {
         const res = await fetch('/api/orders/memories');
+        if (!res.ok) return;
         const mems = await res.json();
         const tbody = document.getElementById('memories-table-body');
         if (!tbody) return;
@@ -797,13 +1132,12 @@ async function fetchMemories() {
 
         mems.forEach(m => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-surface-subtle/50 transition';
             tr.innerHTML = `
-                <td class="px-3 py-2 font-bold text-ink-primary">${m.customer_name}</td>
-                <td class="px-3 py-2 font-mono text-ink-secondary">"${m.phrase}"</td>
-                <td class="px-3 py-2 font-mono text-brand-800 font-bold">${m.mapped_sku}</td>
-                <td class="px-3 py-2 text-ink-muted text-xs">${m.learned_from}</td>
-                <td class="px-3 py-2 text-ink-muted font-mono text-xs">${m.created_at}</td>
+                <td class="px-4 py-2.5 font-semibold text-ink-primary">${m.customer_name}</td>
+                <td class="px-4 py-2.5 font-mono text-ink-secondary">"${m.phrase}"</td>
+                <td class="px-4 py-2.5 font-mono font-bold text-brand-800">[${m.mapped_sku}]</td>
+                <td class="px-4 py-2.5 text-ink-muted text-[11px]">${m.learned_from}</td>
+                <td class="px-4 py-2.5 text-ink-muted text-[11px] font-mono">${m.created_at}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -813,194 +1147,109 @@ async function fetchMemories() {
 }
 
 // -------------------------------------------------------------
-// 10. KITCHEN PRODUCTION BATCH SHEET
+// 11. OPERATIONS INTELLIGENCE ("ASK ORDERSTREAM")
 // -------------------------------------------------------------
-async function fetchKitchenSheet() {
-    try {
-        const res = await fetch('/api/orders/kitchen-sheet');
-        const items = await res.json();
-        const tbody = document.getElementById('kitchen-sheet-body');
-        if (!tbody) return;
-        tbody.innerHTML = '';
+async function askCopilot() {
+    const input = document.getElementById('copilot-input');
+    const query = input.value.trim();
+    if (!query) return;
 
-        if (items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-center text-ink-muted text-xs">No approved production batches yet for tomorrow.</td></tr>`;
-            return;
-        }
-
-        items.forEach(item => {
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-surface-subtle/50 transition';
-            tr.innerHTML = `
-                <td class="px-5 py-3.5 font-mono text-ink-secondary font-semibold text-xs">${item.sku}</td>
-                <td class="px-5 py-3.5 font-bold text-ink-primary text-sm">${item.item_name}</td>
-                <td class="px-5 py-3.5 text-center text-xs text-ink-secondary">${item.order_count} client orders</td>
-                <td class="px-5 py-3.5 text-right font-black text-ink-primary text-base font-mono">${item.total_quantity} Units</td>
-                <td class="px-5 py-3.5 text-right">
-                    <select onchange="updateProductionStatus('${item.sku}', this.value)" class="bg-surface-subtle border border-surface-border rounded-lg px-2.5 py-1 text-xs text-ink-primary font-medium outline-none">
-                        <option value="Pending" ${item.production_status === 'Pending' ? 'selected' : ''}>Pending</option>
-                        <option value="In Progress" ${item.production_status === 'In Progress' ? 'selected' : ''}>Baking</option>
-                        <option value="Completed" ${item.production_status === 'Completed' ? 'selected' : ''}>Baked & Packed</option>
-                    </select>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function updateProductionStatus(sku, newStatus) {
-    try {
-        await fetch(`/api/orders/production/status?sku=${sku}&status=${encodeURIComponent(newStatus)}`, { method: 'POST' });
-        fetchKitchenSheet();
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-// -------------------------------------------------------------
-// 11. COPILOT & INBOUND SIMULATION
-// -------------------------------------------------------------
-async function askCopilot(query) {
-    document.getElementById('copilot-input').value = query;
-    sendCopilotQuery();
-}
-
-async function sendCopilotQuery() {
-    const input = document.getElementById('copilot-input').value;
-    if (!input.trim()) return;
-
-    const box = document.getElementById('copilot-answer-box');
-    const txt = document.getElementById('copilot-answer-text');
-    box.classList.remove('hidden');
-    txt.innerHTML = '<span class="text-ink-muted">Querying order operations...</span>';
+    const respBox = document.getElementById('copilot-response-container');
+    const respText = document.getElementById('copilot-response-text');
+    respBox.classList.remove('hidden');
+    respText.innerText = 'Analyzing workspace state...';
 
     try {
         const res = await fetch('/api/orders/copilot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: input })
+            body: JSON.stringify({ query })
         });
         const data = await res.json();
-        txt.innerHTML = data.answer.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+        respText.innerText = data.answer;
     } catch (err) {
-        txt.innerText = 'Error connecting to operations assistant.';
+        respText.innerText = 'Unable to answer query at this moment.';
     }
 }
 
-async function sendSimulatedWebhook() {
-    const phone = document.getElementById('sim-phone').value;
-    const body = document.getElementById('sim-body').value;
-    const channel = document.getElementById('sim-channel').value;
+// -------------------------------------------------------------
+// 12. "SEE ORDERSTREAM IN ACTION" (DEMO SCENARIOS)
+// -------------------------------------------------------------
+function toggleDemoDrawer() {
+    const drawer = document.getElementById('demo-scenarios-drawer');
+    if (drawer) drawer.classList.toggle('hidden');
+}
 
-    if (!body.trim()) return;
+async function runScenario(type) {
+    let payload = {};
+    if (type === 'repeat') {
+        payload = {
+            From: '+15559876',
+            Body: 'Same as last Tuesday + 4 baguettes for tomorrow morning please - Sarah',
+            Channel: 'WhatsApp'
+        };
+    } else if (type === 'jargon') {
+        payload = {
+            From: '+15551234',
+            Body: 'Hey team, add 4 of the big bread to our morning drop - Marco',
+            Channel: 'SMS'
+        };
+    } else if (type === 'anomaly') {
+        payload = {
+            From: '+15554321',
+            Body: 'Need 500 sourdough loaves for stadium catering tomorrow morning at 6am.',
+            Channel: 'Email'
+        };
+    } else if (type === 'cutoff') {
+        payload = {
+            From: '+15556789',
+            Body: 'Can I still place an order for tomorrow morning delivery?',
+            Channel: 'SMS'
+        };
+    } else if (type === 'duplicate') {
+        payload = {
+            From: '+15558822',
+            Body: 'Order for tomorrow: 12 sourdough loaves and 10 baguettes please.',
+            Channel: 'SMS'
+        };
+    }
 
     try {
         const formData = new URLSearchParams();
-        formData.append('From', phone);
-        formData.append('Body', body);
-        formData.append('Channel', channel);
+        for (const k in payload) formData.append(k, payload[k]);
 
-        const res = await fetch('/api/webhook/twilio', {
+        await fetch('/api/webhook/twilio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData.toString()
         });
 
-        const xmlText = await res.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        const messageNode = xmlDoc.getElementsByTagName("Message")[0];
-        const replyText = messageNode ? messageNode.textContent : "Order processed.";
-
-        const respBox = document.getElementById('sim-response-box');
-        const respText = document.getElementById('sim-response-text');
-        respText.innerText = replyText;
-        respBox.classList.remove('hidden');
-
-        document.getElementById('sim-body').value = '';
-        fetchOrders();
+        // Re-fetch orders and switch to feed or overview
+        toggleDemoDrawer();
+        switchTab('overview');
     } catch (err) {
         console.error(err);
     }
 }
 
-function setScenario(type) {
-    const phone = document.getElementById('sim-phone');
-    const body = document.getElementById('sim-body');
-    const channel = document.getElementById('sim-channel');
-
-    if (type === 'memory') {
-        phone.value = "+15551234"; // Cafe Bella
-        body.value = "Hey Tony, same as last week + 4 baguettes for tomorrow please - Marco";
-        channel.value = "SMS";
-    } else if (type === 'jargon') {
-        phone.value = "+15551234";
-        body.value = "Need 8 of the big bread and 2 dozen muffins by 6am";
-        channel.value = "WhatsApp";
-    } else if (type === 'anomaly') {
-        phone.value = "+15559876";
-        body.value = "Please deliver 500 sourdough loaves and 200 rye for the stadium festival";
-        channel.value = "Email";
-    } else if (type === 'faq') {
-        phone.value = "+15556789";
-        body.value = "What is your order cutoff time for tomorrow morning?";
-        channel.value = "SMS";
-    }
-}
-
 // -------------------------------------------------------------
-// 12. CHANNELS & ONBOARDING
+// 13. ONBOARDING & INTEGRATIONS MODALS
 // -------------------------------------------------------------
-async function openIntegrationsModal() {
-    try {
-        const res = await fetch('/api/orders/integrations/status');
-        const channels = await res.json();
-        const tbody = document.getElementById('integrations-table-body');
-        tbody.innerHTML = '';
-
-        channels.forEach(ch => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-3 py-2 font-bold text-ink-primary">${ch.channel}</td>
-                <td class="px-3 py-2 text-ink-secondary font-mono text-[11px]">${ch.type}</td>
-                <td class="px-3 py-2 font-semibold text-emerald-800 text-[11px]">${ch.status}</td>
-                <td class="px-3 py-2 text-ink-secondary text-[11px]">${ch.details}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        document.getElementById('integrations-modal').classList.remove('hidden');
-    } catch (err) {
-        console.error(err);
-    }
-}
-function closeIntegrationsModal() {
-    document.getElementById('integrations-modal').classList.add('hidden');
-}
-
 function openOnboardingModal() {
-    document.getElementById('onboarding-modal').classList.remove('hidden');
-}
-function closeOnboardingModal() {
-    document.getElementById('onboarding-modal').classList.add('hidden');
-}
-function finishOnboarding() {
-    const name = document.getElementById('onboard-name').value;
-    if (!name) {
-        alert('Please enter a business name.');
-        return;
-    }
-    alert(`Workspace configuration saved for ${name}.`);
-    closeOnboardingModal();
+    const modal = document.getElementById('onboarding-modal');
+    if (modal) modal.classList.remove('hidden');
 }
 
-// -------------------------------------------------------------
-// 13. INITIAL BOOTSTRAP
-// -------------------------------------------------------------
-fetchOrders();
-fetchCatalog();
-fetchBusinessBrain();
-setInterval(fetchOrders, 8000);
+function closeOnboardingModal() {
+    const modal = document.getElementById('onboarding-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function finishOnboarding() {
+    closeOnboardingModal();
+    alert('Workspace channels updated.');
+}
+
+function openIntegrationsModal() {
+    alert('Inbound channels active: SMS (+1 555-839-2011), WhatsApp Business, and Email PO Ingestion connected to production pipeline.');
+}

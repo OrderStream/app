@@ -18,7 +18,10 @@ class BusinessTenant(Base):
     assigned_inbound_number = Column(String(50), unique=True, index=True, nullable=True)
     order_cutoff_time = Column(String(50), default="23:00") # 11:00 PM
     minimum_order_amount = Column(Float, default=0.0)
-    business_faq = Column(Text, default="Minimum wholesale order is $30. Delivery window: 4:30 AM - 6:30 AM.")
+    business_faq = Column(Text, default="Minimum wholesale order is $35. Order cutoff is 11:00 PM for next-day morning delivery.")
+    timezone = Column(String(50), default="America/New_York")
+    shifts_config = Column(String(200), default="Morning,Afternoon,Evening,All Day")
+    api_key = Column(String(100), unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Isolated Relationships
@@ -26,6 +29,8 @@ class BusinessTenant(Base):
     products = relationship("ProductCatalog", back_populates="business", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="business", cascade="all, delete-orphan")
     memories = relationship("CustomerLanguageMemory", back_populates="business", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="business", cascade="all, delete-orphan")
+    webhook_events = relationship("InboundWebhookEvent", back_populates="business", cascade="all, delete-orphan")
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -43,6 +48,8 @@ class Customer(Base):
     special_instructions = Column(Text, default="")
     enabled_channels = Column(String(100), default="SMS, WhatsApp, Email")
     avg_order_volume = Column(Float, default=15.0)
+    usual_order_day = Column(String(100), default="Tuesday, Thursday, Saturday")
+    is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     business = relationship("BusinessTenant", back_populates="customers")
@@ -61,7 +68,7 @@ class CustomerLanguageMemory(Base):
     phrase = Column(String(200), index=True)
     mapped_sku = Column(String(50))
     confidence_boost = Column(Integer, default=95)
-    learned_from = Column(String(100), default="Human Correction")
+    learned_from = Column(String(100), default="Human Staff Correction")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     business = relationship("BusinessTenant", back_populates="memories")
@@ -80,6 +87,8 @@ class ProductCatalog(Base):
     aliases = Column(Text, default="")
     stock_available = Column(Integer, default=100)
     production_status = Column(String(50), default="Pending") # Pending, In Progress, Completed
+    min_order_qty = Column(Integer, default=1)
+    is_archived = Column(Boolean, default=False)
 
     business = relationship("BusinessTenant", back_populates="products")
     order_items = relationship("OrderItem", back_populates="product")
@@ -92,14 +101,15 @@ class Order(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     customer_phone = Column(String(50), index=True)
     customer_name = Column(String(100), default="Unknown Customer")
-    channel = Column(String(50), default="SMS") # SMS, WhatsApp, Email, Voice
+    channel = Column(String(50), default="SMS") # SMS, WhatsApp, Email, Voice, Manual
     raw_message = Column(Text)
     
-    # Human Review Workflow Statuses: New, AI Processed, Needs Review, Approved, Rejected, Sent to Production, Completed
+    # Human Review Workflow Statuses: Received, Processing, Needs Review, Ready, Approved, Sent to Production, Completed, Cancelled
     status = Column(String(50), default="New")
     confirmation_status = Column(String(50), default="Unconfirmed")
     confidence_score = Column(Integer, default=95)
     delivery_date = Column(String(50), default="Tomorrow Morning")
+    shift = Column(String(50), default="Morning") # Morning, Afternoon, Evening, All Day
     
     # Intelligence Flags
     is_anomaly = Column(Boolean, default=False)
@@ -111,6 +121,9 @@ class Order(Base):
     ai_agent_clarification = Column(Text, nullable=True)
     ai_interpretation_summary = Column(Text, nullable=True)
     
+    # Operational Reviewer Attribution
+    reviewed_by = Column(String(100), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     business = relationship("BusinessTenant", back_populates="orders")
@@ -127,6 +140,7 @@ class OrderItem(Base):
     matched_sku = Column(String(50), default="MISC-001")
     item_name = Column(String(200))
     quantity = Column(Integer)
+    completed_quantity = Column(Integer, default=0) # Units completed on kitchen floor
     unit_price = Column(Float, default=0.0)
     customer_price = Column(Float, default=0.0)
     line_total = Column(Float, default=0.0)
@@ -144,9 +158,47 @@ class OrderTimelineEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), index=True)
-    event_type = Column(String(100)) # Message Received, AI Processed, Staff Edit, Approved, Rejected, Sent to Production, Completed
-    actor = Column(String(100), default="OrderStream AI") # "OrderStream AI", "Staff Member", "Customer"
+    event_type = Column(String(100)) # Message Received, Customer Identified, Products Matched, Anomaly Intercepted, Staff Edit, Approved, Rejected, Sent to Production, Clarification Sent
+    actor = Column(String(100), default="OrderStream") # "OrderStream", "Staff Member", "Customer"
     description = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     order = relationship("Order", back_populates="timeline")
+
+class InboundWebhookEvent(Base):
+    """
+    Idempotency & Inbound Pipeline Audit:
+    Every inbound provider message is recorded once with unique message ID.
+    Prevents duplicate orders and tracks delivery health.
+    """
+    __tablename__ = "inbound_webhook_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id"), index=True)
+    provider = Column(String(50), default="twilio_sms") # twilio_sms, twilio_whatsapp, email, manual
+    provider_message_id = Column(String(100), index=True, nullable=True) # e.g. Twilio MessageSid
+    sender = Column(String(100))
+    recipient = Column(String(100), nullable=True)
+    payload = Column(Text)
+    status = Column(String(50), default="processed") # received, processed, duplicate, failed
+    error_message = Column(Text, nullable=True)
+    received_at = Column(DateTime, default=datetime.utcnow)
+
+    business = relationship("BusinessTenant", back_populates="webhook_events")
+
+class Notification(Base):
+    """
+    Lightweight, tenant-scoped operational notifications.
+    """
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id"), index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
+    title = Column(String(200))
+    message = Column(Text)
+    category = Column(String(50), default="review_required") # review_required, anomaly, customer_confirmed, channel_alert
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    business = relationship("BusinessTenant", back_populates="notifications")

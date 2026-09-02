@@ -80,6 +80,30 @@
             background-color: #F4F4F2;
             color: #111827;
         }
+        /* Purpose-Built Bakery Clipboard Print Styles */
+        @media print {
+            aside, header, #command-palette-modal, #demo-scenarios-drawer, 
+            #order-detail-drawer, #contributing-orders-modal, .no-print, button {
+                display: none !important;
+            }
+            body, main, #tab-kitchen {
+                display: block !important;
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-break-inside-avoid {
+                break-inside: avoid;
+            }
+        }
+        .print-only {
+            display: none;
+        }
     </style>
 </head>
 <body class="h-full flex overflow-hidden">
@@ -93,7 +117,6 @@
             <!-- Brand Wordmark Header -->
             <div class="h-16 px-6 flex items-center justify-between border-b border-surface-border">
                 <div class="flex items-center gap-2.5">
-                    <!-- Refined Minimal Geometric Stream Mark -->
                     <div class="w-7 h-7 bg-ink-primary rounded-md flex items-center justify-center text-white font-bold text-xs shadow-sm">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
@@ -164,7 +187,7 @@
                         </button>
                         <button onclick="switchTab('copilot')" id="nav-btn-copilot" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold nav-item-inactive transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                            <span>Assistant</span>
+                            <span>Ask OrderStream</span>
                         </button>
                     </nav>
                 </div>
@@ -178,19 +201,19 @@
                         </a>
                         <button onclick="openIntegrationsModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold nav-item-inactive transition">
                             <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                            <span>Channel Status</span>
+                            <span>Channels</span>
                         </button>
                     </nav>
                 </div>
 
             </div>
 
-            <!-- Bottom Account & System Status -->
+            <!-- Bottom Account & Workspace Switcher -->
             <div class="p-4 border-t border-surface-border bg-surface-subtle/50 space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="truncate">
-                        <div class="text-xs font-bold text-ink-primary truncate" id="sidebar-business-name">Bakehouse 24 Wholesale</div>
-                        <div class="text-[10px] text-ink-muted font-medium">Standard Workspace</div>
+                        <div class="text-xs font-bold text-ink-primary truncate" id="sidebar-business-name">Hudson Artisan Wholesale</div>
+                        <div class="text-[10px] text-ink-muted font-medium">Tenant Verified • Production</div>
                     </div>
                     <button onclick="openOnboardingModal()" title="Workspace settings" class="p-1 text-ink-muted hover:text-ink-primary transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -224,18 +247,43 @@
                 <span class="h-3.5 w-px bg-surface-border"></span>
                 <div class="flex items-center gap-2 text-xs font-medium text-ink-secondary">
                     <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    <span id="header-business-name">Bakehouse 24 Artisan Wholesale</span>
+                    <span id="header-business-name">Hudson Artisan Wholesale</span>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <!-- Discreet Demo Scenarios Drawer Toggle -->
-                <button onclick="toggleDemoDrawer()" id="demo-drawer-toggle" class="px-3 py-1.5 rounded-lg border border-surface-border text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-                    <span>Demo Scenarios</span>
+                <!-- Command Palette Trigger Button (Cmd/Ctrl + K) -->
+                <button onclick="openCommandPalette()" class="px-3 py-1.5 rounded-lg border border-surface-border bg-surface-subtle/50 text-xs text-ink-muted hover:text-ink-primary hover:border-surface-border transition flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <span class="text-xs">Search...</span>
+                    <kbd class="font-mono text-[10px] bg-white border border-surface-border px-1.5 py-0.5 rounded text-ink-muted">⌘K</kbd>
                 </button>
 
-                <!-- Primary Action: Inbound Ingestion / Setup -->
+                <!-- Notifications Center Trigger -->
+                <div class="relative">
+                    <button onclick="toggleNotificationsDropdown()" id="notif-btn" class="p-1.5 rounded-lg border border-surface-border hover:bg-surface-subtle text-ink-secondary transition relative">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-amber-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center">0</span>
+                    </button>
+                    <!-- Notifications Dropdown -->
+                    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white border border-surface-border rounded-xl shadow-xl p-3 space-y-2 z-50">
+                        <div class="flex items-center justify-between pb-2 border-b border-surface-border text-xs font-bold text-ink-primary">
+                            <span>Operations Notifications</span>
+                            <span class="text-[10px] text-ink-muted font-normal">Real-time alerts</span>
+                        </div>
+                        <div id="notif-items-container" class="space-y-1.5 max-h-64 overflow-y-auto">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Discreet Demo Scenarios Drawer Toggle -->
+                <button onclick="toggleDemoDrawer()" id="demo-drawer-toggle" class="px-3 py-1.5 rounded-lg border border-surface-border text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>See OrderStream in Action</span>
+                </button>
+
+                <!-- Primary Action: Configure Channels -->
                 <button onclick="openOnboardingModal()" class="px-3.5 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
                     Configure Channels
                 </button>
@@ -250,20 +298,20 @@
             <!-- ========================================================= -->
             <section id="tab-overview" class="space-y-8">
                 
-                <!-- Contextual Operational Summary -->
+                <!-- SECTION 1: OPERATIONAL BRIEF -->
                 <div class="flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-surface-border gap-4">
                     <div>
                         <div class="text-xs font-semibold text-brand-800 uppercase tracking-wider mb-1">
-                            Today's Briefing
+                            Today's Operational Brief
                         </div>
                         <h1 class="text-2xl font-bold tracking-tight text-ink-primary">
                             Operations Overview
                         </h1>
                         <p class="text-xs text-ink-secondary mt-1 max-w-xl" id="overview-operational-greeting">
-                            3 orders require your review before kitchen cutoff at 11:00 PM.
+                            Syncing workspace state...
                         </p>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3" id="overview-cta-container">
                         <button onclick="switchTab('orders', 'Needs Review')" class="px-4 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm flex items-center gap-2">
                             <span>Review pending orders</span>
                             <span class="text-xs">→</span>
@@ -271,77 +319,81 @@
                     </div>
                 </div>
 
-                <!-- Clean Typographic Operational Metrics (No Rainbow Cards) -->
+                <!-- SECTION 2: ATTENTION REQUIRED (MOST VISUALLY IMPORTANT) -->
+                <div id="overview-attention-section" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                            <h2 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
+                                Attention Required
+                            </h2>
+                        </div>
+                        <span class="text-[11px] text-ink-muted">Action required before production cutoff</span>
+                    </div>
+
+                    <!-- Actionable Attention Cards Container -->
+                    <div id="overview-attention-container" class="space-y-3">
+                        <!-- Populated by renderOverviewDashboard() -->
+                    </div>
+                </div>
+
+                <!-- SECTION 3: TODAY'S TYPOGRAPHIC METRICS (NO CARDS / NO RAINBOWS) -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-2">
                     <div class="border-l-2 border-ink-primary pl-4 py-1">
-                        <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Orders Ingested</div>
+                        <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Orders Received</div>
                         <div class="text-3xl font-bold text-ink-primary mt-1 tracking-tight" id="stat-total-orders">0</div>
                         <div class="text-[11px] text-ink-secondary mt-0.5">Multi-channel feed active</div>
                     </div>
                     <div class="border-l-2 border-amber-600 pl-4 py-1">
                         <div class="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Needs Review</div>
-                        <div class="text-3xl font-bold text-amber-800 mt-1 tracking-tight" id="stat-anomalies">0</div>
-                        <div class="text-[11px] text-amber-900/80 mt-0.5">Anomalies & low confidence</div>
+                        <div class="text-3xl font-bold text-amber-800 mt-1 tracking-tight" id="stat-review-orders">0</div>
+                        <div class="text-[11px] text-amber-900/80 mt-0.5">Safety holds & anomalies</div>
+                    </div>
+                    <div class="border-l-2 border-brand-800 pl-4 py-1">
+                        <div class="text-[11px] font-semibold text-brand-800 uppercase tracking-wider">Approved Units</div>
+                        <div class="text-3xl font-bold text-ink-primary mt-1 tracking-tight" id="stat-total-units">0</div>
+                        <div class="text-[11px] text-ink-secondary mt-0.5">Queued for tomorrow's bake</div>
                     </div>
                     <div class="border-l-2 border-surface-border pl-4 py-1">
-                        <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Approved Batch</div>
-                        <div class="text-3xl font-bold text-ink-primary mt-1 tracking-tight" id="stat-total-units">0</div>
-                        <div class="text-[11px] text-ink-secondary mt-0.5">Units for 3 AM kitchen</div>
-                    </div>
-                    <div class="border-l-2 border-emerald-700 pl-4 py-1">
-                        <div class="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">Queued Value</div>
-                        <div class="text-3xl font-bold text-ink-primary mt-1 tracking-tight" id="stat-total-revenue">$0.00</div>
-                        <div class="text-[11px] text-emerald-800 font-medium mt-0.5">Approved batch total</div>
+                        <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Batch Order Value</div>
+                        <div class="text-3xl font-bold text-ink-primary mt-1 tracking-tight" id="stat-total-rev">$0.00</div>
+                        <div class="text-[11px] text-ink-secondary mt-0.5">Confirmed wholesale total</div>
                     </div>
                 </div>
 
-                <!-- ATTENTION REQUIRED (Most visually important section) -->
-                <div class="space-y-3 pt-2">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
-                                Attention Required
-                            </h2>
-                            <span id="overview-attention-count-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200/60">0</span>
-                        </div>
-                        <span class="text-[11px] text-ink-muted">Orders paused for human oversight before baking</span>
-                    </div>
-
-                    <div id="overview-attention-container" class="space-y-3">
-                        <!-- Populated by JavaScript: Actionable attention cards -->
-                    </div>
-                </div>
-
-                <!-- Two-Column Operational Split: Recent Inbound Activity & Tomorrow's Production -->
-                <div class="grid lg:grid-cols-12 gap-8 pt-4">
+                <!-- SECTION 4 & 5: WHAT'S NEXT & RECENT ACTIVITY -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
                     
-                    <!-- Left: Recent Inbound Activity Stream (7 cols) -->
+                    <!-- Left: Recent Inbound Activity Stream -->
                     <div class="lg:col-span-7 space-y-3">
                         <div class="flex items-center justify-between pb-2 border-b border-surface-border">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
                                 Recent Inbound Activity
                             </h3>
-                            <button onclick="switchTab('orders')" class="text-xs text-brand-800 hover:text-brand-900 font-semibold">
-                                View all orders →
+                            <button onclick="switchTab('orders')" class="text-xs text-ink-secondary hover:text-ink-primary font-medium">
+                                View full feed →
                             </button>
                         </div>
-                        <div id="overview-activity-stream" class="space-y-3">
-                            <!-- Populated by JS: Clean minimal activity items -->
+                        <div id="overview-activity-stream" class="space-y-2">
+                            <!-- Populated dynamically -->
                         </div>
                     </div>
 
-                    <!-- Right: Tomorrow's Production Summary (5 cols) -->
+                    <!-- Right: Tomorrow's Production Summary & Next Cutoff -->
                     <div class="lg:col-span-5 space-y-3">
                         <div class="flex items-center justify-between pb-2 border-b border-surface-border">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
-                                Tomorrow's Production
-                            </h3>
-                            <button onclick="switchTab('kitchen')" class="text-xs text-brand-800 hover:text-brand-900 font-semibold">
-                                Production sheet →
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
+                                    Tomorrow's Production
+                                </h3>
+                                <div class="text-[10px] text-ink-muted" id="overview-next-cutoff">Cutoff: 11:00 PM tonight</div>
+                            </div>
+                            <button onclick="switchTab('kitchen')" class="text-xs text-ink-secondary hover:text-ink-primary font-medium">
+                                Open bake sheet →
                             </button>
                         </div>
-                        <div class="bg-white border border-surface-border rounded-xl p-4 shadow-sm space-y-3" id="overview-production-list">
-                            <!-- Populated by JS -->
+                        <div id="overview-production-summary" class="space-y-2">
+                            <!-- Populated dynamically -->
                         </div>
                     </div>
 
@@ -350,26 +402,28 @@
             </section>
 
             <!-- ========================================================= -->
-            <!-- VIEW 2: ORDERS PAGE (PREMIUM OPERATIONAL TABLE) -->
+            <!-- VIEW 2: ORDERS FEED TABLE -->
             <!-- ========================================================= -->
             <section id="tab-orders" class="hidden space-y-6">
                 
-                <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-surface-border gap-4">
-                    <div>
-                        <h1 class="text-xl font-bold tracking-tight text-ink-primary">Wholesale Orders</h1>
-                        <p class="text-xs text-ink-secondary mt-0.5">Real-time multi-channel feed with grounded intelligence</p>
+                <!-- Filter Bar & Search -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-surface-border">
+                    <!-- Status Filter Tabs -->
+                    <div class="flex items-center gap-1 bg-surface-subtle p-1 rounded-lg border border-surface-border text-xs font-semibold">
+                        <button onclick="filterStatus('ALL')" id="status-btn-ALL" class="px-3 py-1.5 rounded-md bg-ink-primary text-white transition">All Orders</button>
+                        <button onclick="filterStatus('Needs Review')" id="status-btn-Needs Review" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Needs Review</button>
+                        <button onclick="filterStatus('Approved')" id="status-btn-Approved" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Approved</button>
+                        <button onclick="filterStatus('Sent to Production')" id="status-btn-Sent to Production" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">In Production</button>
                     </div>
-                    
-                    <!-- Operational Filters -->
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <div class="inline-flex rounded-lg border border-surface-border bg-white p-0.5 text-xs font-semibold">
-                            <button onclick="filterStatus('ALL')" id="status-btn-ALL" class="px-3 py-1.5 rounded-md bg-ink-primary text-white transition">All</button>
-                            <button onclick="filterStatus('Needs Review')" id="status-btn-Needs Review" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Needs Review</button>
-                            <button onclick="filterStatus('Approved')" id="status-btn-Approved" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Approved</button>
-                            <button onclick="filterStatus('Sent to Production')" id="status-btn-Sent to Production" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">In Production</button>
+
+                    <div class="flex items-center gap-3">
+                        <!-- Search Bar -->
+                        <div class="relative">
+                            <input id="orders-search-input" onkeyup="handleOrdersSearch(event)" type="text" placeholder="Search customer, SKU, order #..." class="w-64 bg-white border border-surface-border rounded-lg px-3 py-1.5 text-xs text-ink-primary placeholder-ink-muted focus:border-ink-primary outline-none">
                         </div>
 
-                        <select onchange="filterChannel(this.value)" class="bg-white border border-surface-border text-ink-primary text-xs rounded-lg px-3 py-1.5 font-medium outline-none focus:border-ink-primary transition">
+                        <!-- Channel Selector -->
+                        <select onchange="filterChannel(this.value)" class="bg-white border border-surface-border rounded-lg px-3 py-1.5 text-xs text-ink-primary font-medium focus:border-ink-primary outline-none">
                             <option value="ALL">All Channels</option>
                             <option value="SMS">SMS Hotline</option>
                             <option value="WhatsApp">WhatsApp</option>
@@ -378,59 +432,23 @@
                     </div>
                 </div>
 
-                <!-- Clean Editorial Table Surface -->
+                <!-- Orders Operational Feed Table -->
                 <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs text-ink-primary">
                             <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
                                 <tr>
-                                    <th class="px-5 py-3.5">Customer</th>
-                                    <th class="px-5 py-3.5">Original Message & AI Interpretation</th>
-                                    <th class="px-5 py-3.5">Matched Items</th>
-                                    <th class="px-5 py-3.5">Confidence</th>
+                                    <th class="px-5 py-3.5">Order</th>
+                                    <th class="px-5 py-3.5">Customer & Channel</th>
+                                    <th class="px-5 py-3.5">Interpreted Line Items</th>
+                                    <th class="px-5 py-3.5">Operational Review Reason</th>
                                     <th class="px-5 py-3.5">Status</th>
+                                    <th class="px-5 py-3.5 text-right">Total</th>
                                     <th class="px-5 py-3.5 text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="orders-table-body" class="divide-y divide-surface-border">
-                                <!-- Populated dynamically by app.js -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ========================================================= -->
-            <!-- VIEW 3: CUSTOMERS DIRECTORY (CRM-LITE) -->
-            <!-- ========================================================= -->
-            <section id="tab-customers" class="hidden space-y-6">
-                
-                <div class="flex items-center justify-between pb-4 border-b border-surface-border">
-                    <div>
-                        <h1 class="text-xl font-bold tracking-tight text-ink-primary">Customer Directory</h1>
-                        <p class="text-xs text-ink-secondary mt-0.5">Wholesale accounts, custom pricing tiers, delivery routes, and learned terminology</p>
-                    </div>
-                    <button onclick="openAddCustomerModal()" class="px-3.5 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
-                        + Add Customer
-                    </button>
-                </div>
-
-                <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-ink-primary">
-                            <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
-                                <tr>
-                                    <th class="px-4 py-3">Account</th>
-                                    <th class="px-4 py-3">Business & Contact</th>
-                                    <th class="px-4 py-3">Phone / Channels</th>
-                                    <th class="px-4 py-3">Route</th>
-                                    <th class="px-4 py-3">Pricing Tier</th>
-                                    <th class="px-4 py-3">Special Instructions</th>
-                                    <th class="px-4 py-3 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="customers-table-body" class="divide-y divide-surface-border">
-                                <!-- Populated by JS -->
+                                <!-- Populated dynamically -->
                             </tbody>
                         </table>
                     </div>
@@ -439,132 +457,156 @@
             </section>
 
             <!-- ========================================================= -->
-            <!-- VIEW 4: PRODUCTS CATALOG -->
-            <!-- ========================================================= -->
-            <section id="tab-products" class="hidden space-y-6">
-                
-                <div class="flex items-center justify-between pb-4 border-b border-surface-border">
-                    <div>
-                        <h1 class="text-xl font-bold tracking-tight text-ink-primary">Product Catalog</h1>
-                        <p class="text-xs text-ink-secondary mt-0.5">Official wholesale SKUs, baseline prices, and search nicknames</p>
-                    </div>
-                    <button onclick="openAddProductModal()" class="px-3.5 py-1.5 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm">
-                        + Add Product
-                    </button>
-                </div>
-
-                <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs text-ink-primary">
-                            <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
-                                <tr>
-                                    <th class="px-4 py-3">SKU</th>
-                                    <th class="px-4 py-3">Item Description</th>
-                                    <th class="px-4 py-3">Category</th>
-                                    <th class="px-4 py-3">Wholesale Price</th>
-                                    <th class="px-4 py-3">Available Stock</th>
-                                    <th class="px-4 py-3">Aliases / Nicknames</th>
-                                    <th class="px-4 py-3 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="catalog-table-body" class="divide-y divide-surface-border">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </section>
-
-            <!-- ========================================================= -->
-            <!-- VIEW 5: RULES & BUSINESS BRAIN -->
-            <!-- ========================================================= -->
-            <section id="tab-brain" class="hidden space-y-8">
-                
-                <div class="pb-4 border-b border-surface-border">
-                    <h1 class="text-xl font-bold tracking-tight text-ink-primary">Rules & Business Knowledge</h1>
-                    <p class="text-xs text-ink-secondary mt-0.5">Cutoff policies, minimum order thresholds, customer terminology, and operational guidance</p>
-                </div>
-
-                <div class="grid lg:grid-cols-12 gap-8">
-                    
-                    <!-- Left: Business Ordering Policies (5 cols) -->
-                    <div class="lg:col-span-5 bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
-                        <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
-                                Ordering Policies
-                            </h3>
-                            <button onclick="saveBusinessBrain()" class="px-3 py-1 rounded bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
-                                Save Rules
-                            </button>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Business Name</label>
-                                <input id="brain-name" type="text" class="w-full bg-surface-subtle/50 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary focus:bg-white outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Nightly Order Cutoff Time</label>
-                                <input id="brain-cutoff" type="text" class="w-full bg-surface-subtle/50 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary focus:bg-white outline-none" value="23:00 (11:00 PM)">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Minimum Wholesale Order ($)</label>
-                                <input id="brain-min-order" type="number" class="w-full bg-surface-subtle/50 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary focus:bg-white outline-none" value="35.00">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Customer FAQ Guidance</label>
-                                <textarea id="brain-faq" rows="4" class="w-full bg-surface-subtle/50 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary focus:bg-white outline-none" placeholder="Information provided when clients ask questions about cutoff, delivery, or pricing..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Customer Language Memory (7 cols) -->
-                    <div class="lg:col-span-7 bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
-                        <div class="pb-3 border-b border-surface-border">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
-                                Customer Terminology & Nicknames
-                            </h3>
-                            <p class="text-xs text-ink-secondary mt-0.5">Learned shorthand mapped to your official catalog SKUs</p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs text-ink-primary">
-                                <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
-                                    <tr>
-                                        <th class="px-3 py-2">Customer Account</th>
-                                        <th class="px-3 py-2">Customer Term</th>
-                                        <th class="px-3 py-2">Mapped SKU</th>
-                                        <th class="px-3 py-2">Source</th>
-                                        <th class="px-3 py-2">Recorded</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="memories-table-body" class="divide-y divide-surface-border">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-
-            </section>
-
-            <!-- ========================================================= -->
-            <!-- VIEW 6: PRODUCTION BAKE SHEET -->
+            <!-- VIEW 3: PRODUCTION BATCH SHEET (PRINTABLE FLOOR TOOL) -->
             <!-- ========================================================= -->
             <section id="tab-kitchen" class="hidden space-y-6">
                 
-                <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-surface-border gap-4">
-                    <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-brand-800">Bakehouse Operations</div>
-                        <h1 class="text-xl font-bold tracking-tight text-ink-primary">Kitchen Production Batch Sheet</h1>
-                        <p class="text-xs text-ink-secondary mt-0.5">Aggregated batch counts calculated strictly across approved wholesale orders</p>
+                <!-- Print-Only Bakery Clipboard Header -->
+                <div class="print-only pb-4 border-b-2 border-black space-y-1">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <h1 class="text-2xl font-black uppercase tracking-tight" id="print-bakery-name">Hudson Artisan Wholesale</h1>
+                            <div class="text-sm font-bold">Daily Production & Bake Floor Sheet</div>
+                        </div>
+                        <div class="text-right text-xs font-mono">
+                            <div id="print-date">Date: Tomorrow Morning</div>
+                            <div id="print-shift">Shift: Morning (03:00)</div>
+                            <div id="print-timestamp">Generated: 02 Sep 2026 23:30</div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="window.print()" class="px-4 py-2 rounded-lg bg-white border border-surface-border text-ink-primary hover:bg-surface-subtle text-xs font-semibold transition flex items-center gap-2 shadow-sm">
-                            <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                </div>
+
+                <!-- Shift & Date Selector Header (Screen Only) -->
+                <div class="no-print flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-surface-border gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-ink-primary">
+                            Production Floor Sheet
+                        </h2>
+                        <p class="text-xs text-ink-secondary mt-0.5">Aggregated batch quantities from confirmed wholesale orders</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <!-- Shift Switcher -->
+                        <div class="flex items-center gap-1 bg-surface-subtle p-1 rounded-lg border border-surface-border text-xs font-semibold">
+                            <button onclick="switchProductionShift('Morning')" id="shift-btn-Morning" class="px-3 py-1.5 rounded-md bg-ink-primary text-white transition">Morning (3 AM)</button>
+                            <button onclick="switchProductionShift('Afternoon')" id="shift-btn-Afternoon" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Afternoon</button>
+                            <button onclick="switchProductionShift('Evening')" id="shift-btn-Evening" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">Evening</button>
+                            <button onclick="switchProductionShift('All Day')" id="shift-btn-All Day" class="px-3 py-1.5 rounded-md text-ink-secondary hover:text-ink-primary transition">All Day</button>
+                        </div>
+
+                        <!-- Print Action -->
+                        <button onclick="window.print()" class="px-3 py-1.5 rounded-lg border border-surface-border bg-white hover:bg-surface-subtle text-xs font-semibold text-ink-primary transition flex items-center gap-1.5 shadow-sm">
+                            <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                             <span>Print Floor Sheet</span>
                         </button>
+
+                        <!-- Export Production CSV -->
+                        <button onclick="exportCurrentProductionCsv()" class="px-3 py-1.5 rounded-lg border border-surface-border bg-white hover:bg-surface-subtle text-xs font-semibold text-ink-primary transition shadow-sm">
+                            Export CSV
+                        </button>
                     </div>
+                </div>
+
+                <!-- Production Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 py-1">
+                    <div class="bg-white border border-surface-border rounded-xl p-3.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Approved Orders</div>
+                        <div class="text-xl font-bold text-ink-primary mt-0.5" id="prod-sum-orders">0</div>
+                    </div>
+                    <div class="bg-white border border-surface-border rounded-xl p-3.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">SKUs Required</div>
+                        <div class="text-xl font-bold text-ink-primary mt-0.5" id="prod-sum-skus">0</div>
+                    </div>
+                    <div class="bg-white border border-surface-border rounded-xl p-3.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Total Units</div>
+                        <div class="text-xl font-bold text-ink-primary mt-0.5" id="prod-sum-units">0</div>
+                    </div>
+                    <div class="bg-white border border-surface-border rounded-xl p-3.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Completed</div>
+                        <div class="text-xl font-bold text-emerald-800 mt-0.5" id="prod-sum-completed">0</div>
+                    </div>
+                    <div class="bg-white border border-surface-border rounded-xl p-3.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-amber-800">Remaining</div>
+                        <div class="text-xl font-bold text-amber-800 mt-0.5" id="prod-sum-remaining">0</div>
+                    </div>
+                </div>
+
+                <!-- Production Table -->
+                <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs text-ink-primary">
+                        <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                            <tr>
+                                <th class="px-5 py-3.5">Product SKU & Name</th>
+                                <th class="px-5 py-3.5 text-center">Batch Required</th>
+                                <th class="px-5 py-3.5 text-center">Completed</th>
+                                <th class="px-5 py-3.5 text-center">Remaining</th>
+                                <th class="px-5 py-3.5 text-center">Contributing Orders</th>
+                                <th class="px-5 py-3.5">Production Status</th>
+                                <th class="no-print px-5 py-3.5 text-right">Floor Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kitchen-table-body" class="divide-y divide-surface-border">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Print-Only Signature & Notes Area -->
+                <div class="print-only pt-8 space-y-4 text-xs">
+                    <div class="border-t border-dashed border-gray-400 pt-3 flex justify-between">
+                        <div>Lead Baker Signature: ___________________________</div>
+                        <div>Packer Signature: ___________________________</div>
+                        <div>Departure Verification: ___________________________</div>
+                    </div>
+                    <div class="text-[10px] text-gray-500">OrderStream Floor Sheet • Generated from authoritative production database • All units checked prior to morning loading.</div>
+                </div>
+
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 4: CUSTOMER DIRECTORY (CRM-LITE) -->
+            <!-- ========================================================= -->
+            <section id="tab-customers" class="hidden space-y-6">
+                <div class="flex items-center justify-between pb-4 border-b border-surface-border">
+                    <div>
+                        <h2 class="text-lg font-bold text-ink-primary">Customer Directory</h2>
+                        <p class="text-xs text-ink-secondary mt-0.5">Wholesale buyer accounts, pricing tiers, delivery routes, and custom terminology</p>
+                    </div>
+                    <button onclick="openCustomerModal()" class="px-3.5 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
+                        + Add Customer Account
+                    </button>
+                </div>
+
+                <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs text-ink-primary">
+                        <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                            <tr>
+                                <th class="px-5 py-3.5">Account & Business Name</th>
+                                <th class="px-5 py-3.5">Contact Details</th>
+                                <th class="px-5 py-3.5">Delivery Route</th>
+                                <th class="px-5 py-3.5">Pricing Tier</th>
+                                <th class="px-5 py-3.5">Delivery Schedule</th>
+                                <th class="px-5 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table-body" class="divide-y divide-surface-border">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 5: PRODUCT CATALOG -->
+            <!-- ========================================================= -->
+            <section id="tab-products" class="hidden space-y-6">
+                <div class="flex items-center justify-between pb-4 border-b border-surface-border">
+                    <div>
+                        <h2 class="text-lg font-bold text-ink-primary">Product Catalog</h2>
+                        <p class="text-xs text-ink-secondary mt-0.5">Catalog SKUs, base wholesale pricing, units, and global shorthand aliases</p>
+                    </div>
+                    <button onclick="openAddProductModal()" class="px-3.5 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
+                        + Add Product
+                    </button>
                 </div>
 
                 <div class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden">
@@ -572,55 +614,99 @@
                         <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
                             <tr>
                                 <th class="px-5 py-3.5">SKU</th>
-                                <th class="px-5 py-3.5">Product Description</th>
-                                <th class="px-5 py-3.5 text-center">Contributing Orders</th>
-                                <th class="px-5 py-3.5 text-right">Batch to Bake</th>
-                                <th class="px-5 py-3.5 text-right">Production Status</th>
+                                <th class="px-5 py-3.5">Product Name</th>
+                                <th class="px-5 py-3.5">Category</th>
+                                <th class="px-5 py-3.5">Unit</th>
+                                <th class="px-5 py-3.5">Base Price</th>
+                                <th class="px-5 py-3.5">Recognized Aliases</th>
+                                <th class="px-5 py-3.5 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="kitchen-sheet-body" class="divide-y divide-surface-border">
-                            <!-- Populated dynamically by app.js -->
+                        <tbody id="products-table-body" class="divide-y divide-surface-border">
                         </tbody>
                     </table>
                 </div>
-
             </section>
 
             <!-- ========================================================= -->
-            <!-- VIEW 7: OPERATIONS ASSISTANT / COPILOT -->
+            <!-- VIEW 6: RULES & BUSINESS KNOWLEDGE -->
             <!-- ========================================================= -->
-            <section id="tab-copilot" class="hidden space-y-6">
-                
-                <div class="max-w-2xl mx-auto space-y-6">
-                    <div class="text-center space-y-1">
-                        <h1 class="text-xl font-bold tracking-tight text-ink-primary">Operations Assistant</h1>
-                        <p class="text-xs text-ink-secondary">Query order demand, flagged items, cutoff rules, or missing accounts</p>
-                    </div>
+            <section id="tab-brain" class="hidden space-y-8">
+                <div class="pb-4 border-b border-surface-border">
+                    <h2 class="text-lg font-bold text-ink-primary">Business Rules & Knowledge</h2>
+                    <p class="text-xs text-ink-secondary mt-0.5">Configure order cutoff policies, minimums, and customer shorthand terminology</p>
+                </div>
 
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <button onclick="askCopilot('Why are orders flagged for review?')" class="px-3 py-1.5 rounded-lg bg-white border border-surface-border text-xs text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition">
-                            "Why are orders flagged?"
-                        </button>
-                        <button onclick="askCopilot('Which customers have not ordered today?')" class="px-3 py-1.5 rounded-lg bg-white border border-surface-border text-xs text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition">
-                            "Missing customer orders?"
-                        </button>
-                        <button onclick="askCopilot('What is the total revenue queued tonight?')" class="px-3 py-1.5 rounded-lg bg-white border border-surface-border text-xs text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition">
-                            "Total revenue tonight?"
-                        </button>
+                <!-- Structured Policies Card -->
+                <div class="bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">Wholesale Operating Policies</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Order Cutoff Time</label>
+                            <input id="brain-cutoff" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="23:00">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Minimum Order Amount ($)</label>
+                            <input id="brain-min-order" type="number" step="0.01" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="35.00">
+                        </div>
                     </div>
-
-                    <div class="bg-white border border-surface-border rounded-xl p-3 shadow-sm flex items-center gap-2">
-                        <input id="copilot-input" type="text" class="w-full bg-transparent px-3 py-1 text-xs text-ink-primary outline-none" placeholder="Ask about tonight's orders, anomalies, or cutoff policies...">
-                        <button onclick="sendCopilotQuery()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
-                            Ask
-                        </button>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Business FAQs & Exceptions Policy</label>
+                        <textarea id="brain-faq" rows="3" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary"></textarea>
                     </div>
-
-                    <div id="copilot-answer-box" class="hidden bg-white border border-surface-border rounded-xl p-5 shadow-sm text-xs leading-relaxed text-ink-primary">
-                        <div id="copilot-answer-text"></div>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="saveBusinessBrain()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
+                            Save Operating Policies
+                        </button>
                     </div>
                 </div>
 
+                <!-- Customer Terminology Knowledge Table -->
+                <div class="bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">Customer Terminology & Preferences</h3>
+                            <p class="text-xs text-ink-secondary mt-0.5">Private shorthand terms learned from customer communications</p>
+                        </div>
+                    </div>
+                    <table class="w-full text-left text-xs text-ink-primary">
+                        <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                            <tr>
+                                <th class="px-4 py-2.5">Customer</th>
+                                <th class="px-4 py-2.5">Inbound Phrase</th>
+                                <th class="px-4 py-2.5">Authoritative SKU</th>
+                                <th class="px-4 py-2.5">Origin</th>
+                                <th class="px-4 py-2.5">Date Added</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memories-table-body" class="divide-y divide-surface-border">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 7: OPERATIONS ASSISTANT -->
+            <!-- ========================================================= -->
+            <section id="tab-copilot" class="hidden space-y-6">
+                <div class="pb-4 border-b border-surface-border">
+                    <h2 class="text-lg font-bold text-ink-primary">Operations Intelligence</h2>
+                    <p class="text-xs text-ink-secondary mt-0.5">Grounded answers regarding today's orders, anomalies, and tomorrow's production requirements</p>
+                </div>
+
+                <div class="bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
+                    <div class="flex gap-2">
+                        <input id="copilot-input" onkeydown="if(event.key==='Enter') askCopilot()" type="text" placeholder="e.g. What orders need review? What is tomorrow's total sourdough count?" class="flex-1 bg-surface-subtle/60 border border-surface-border rounded-lg px-4 py-2 text-xs text-ink-primary outline-none focus:border-ink-primary">
+                        <button onclick="askCopilot()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
+                            Ask OrderStream
+                        </button>
+                    </div>
+
+                    <div id="copilot-response-container" class="hidden bg-surface-subtle border border-surface-border rounded-lg p-4 text-xs text-ink-primary space-y-2">
+                        <div class="font-bold text-[11px] uppercase tracking-wider text-ink-muted">Answer</div>
+                        <div id="copilot-response-text" class="leading-relaxed"></div>
+                    </div>
+                </div>
             </section>
 
         </main>
@@ -628,269 +714,238 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- SLIDE-OVER DEMO SCENARIOS DRAWER -->
+    <!-- SLIDE-OVER: SEE ORDERSTREAM IN ACTION (DEMO SCENARIOS) -->
     <!-- ========================================================= -->
-    <div id="demo-scenarios-drawer" class="hidden fixed inset-0 z-40 overflow-hidden">
-        <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px] transition-opacity" onclick="toggleDemoDrawer()"></div>
-        <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex">
-            <div class="w-screen max-w-md bg-white border-l border-surface-border shadow-2xl flex flex-col justify-between p-6 space-y-6">
-                
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                        <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-brand-800">Sales Presentation</span>
-                            <h3 class="text-base font-bold text-ink-primary">Interactive Demo Scenarios</h3>
-                        </div>
-                        <button onclick="toggleDemoDrawer()" class="text-ink-muted hover:text-ink-primary text-xl">&times;</button>
-                    </div>
-
-                    <p class="text-xs text-ink-secondary">
-                        Simulate inbound buyer messages across SMS, WhatsApp, and Email without changing buyer ordering habits.
-                    </p>
-
-                    <!-- Scenario Preset Selector -->
-                    <div class="space-y-2">
-                        <div class="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Preset Customer Scenarios</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="setScenario('memory')" class="p-2.5 rounded-lg border border-surface-border hover:border-ink-primary text-left transition bg-surface-subtle/50">
-                                <div class="text-xs font-semibold text-ink-primary">"Same as Last Week"</div>
-                                <div class="text-[10px] text-ink-muted">Historical order pattern</div>
-                            </button>
-                            <button onclick="setScenario('jargon')" class="p-2.5 rounded-lg border border-surface-border hover:border-ink-primary text-left transition bg-surface-subtle/50">
-                                <div class="text-xs font-semibold text-ink-primary">"The Big Bread"</div>
-                                <div class="text-[10px] text-ink-muted">Customer nickname mapping</div>
-                            </button>
-                            <button onclick="setScenario('anomaly')" class="p-2.5 rounded-lg border border-surface-border hover:border-ink-primary text-left transition bg-surface-subtle/50">
-                                <div class="text-xs font-semibold text-rose-800">Unusual Quantity (500x)</div>
-                                <div class="text-[10px] text-ink-muted">Spike defense & review</div>
-                            </button>
-                            <button onclick="setScenario('faq')" class="p-2.5 rounded-lg border border-surface-border hover:border-ink-primary text-left transition bg-surface-subtle/50">
-                                <div class="text-xs font-semibold text-ink-primary">Cutoff Inquiries</div>
-                                <div class="text-[10px] text-ink-muted">Automated clerk answer</div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Simulator Inputs -->
-                    <div class="space-y-3 pt-2">
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-1">Inbound Channel</label>
-                            <select id="sim-channel" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary">
-                                <option value="SMS">SMS Hotline</option>
-                                <option value="WhatsApp">WhatsApp</option>
-                                <option value="Email">Email PO</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-1">Customer Account</label>
-                            <select id="sim-phone" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary">
-                                <option value="+15551234">+1 (555) 1234 — Cafe Bella (Tier 1 Discount)</option>
-                                <option value="+15559876">+1 (555) 9876 — The Daily Grind (Standard)</option>
-                                <option value="+15554321">+1 (555) 4321 — Harbor View Bistro (VIP Discount)</option>
-                                <option value="+15556789">+1 (555) 6789 — Greenwood Espresso</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted mb-1">Message Content</label>
-                            <textarea id="sim-body" rows="3" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="Type test message..."></textarea>
-                        </div>
-                        <button onclick="sendSimulatedWebhook()" class="w-full py-2.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
-                            Send Simulated Order
-                        </button>
-                        <div id="sim-response-box" class="hidden p-3 bg-surface-subtle border border-surface-border rounded-lg text-xs font-mono space-y-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Automated Response</span>
-                            <div id="sim-response-text" class="text-ink-primary"></div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="text-[11px] text-ink-muted text-center pt-2 border-t border-surface-border">
-                    Simulates actual Twilio webhook payloads securely.
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- MODAL 1: ORDER DETAIL & HUMAN REVIEW DRAWER -->
-    <!-- ========================================================= -->
-    <div id="order-detail-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white border border-surface-border rounded-2xl p-6 md:p-8 max-w-3xl w-full shadow-2xl space-y-6 my-8">
-            
-            <div class="flex items-center justify-between pb-4 border-b border-surface-border">
-                <div>
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-base font-bold text-ink-primary">
-                            Order <span id="detail-order-id" class="font-mono text-brand-800">#0</span>
-                        </h3>
-                        <span id="detail-status-pill" class="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-subtle text-ink-secondary">Review</span>
-                    </div>
-                    <p class="text-xs text-ink-muted mt-0.5" id="detail-customer-header">Cafe Bella • Route A</p>
-                </div>
-                <button onclick="closeOrderDetailModal()" class="text-ink-muted hover:text-ink-primary text-xl font-bold">&times;</button>
-            </div>
-
-            <!-- Side-by-Side: Customer Message vs Order Interpretation -->
-            <div class="grid md:grid-cols-2 gap-4">
-                <div class="p-4 bg-surface-subtle/50 rounded-xl border border-surface-border space-y-1.5">
-                    <span class="text-[10px] font-bold text-ink-muted uppercase tracking-wider">Customer Inbound Message</span>
-                    <div id="detail-raw-msg" class="text-xs text-ink-primary font-mono bg-white p-3 rounded-lg border border-surface-border leading-relaxed"></div>
-                </div>
-                <div class="p-4 bg-surface-subtle/50 rounded-xl border border-surface-border space-y-1.5">
-                    <span class="text-[10px] font-bold text-brand-800 uppercase tracking-wider">Order Interpretation</span>
-                    <div id="detail-ai-summary" class="text-xs text-ink-primary bg-white p-3 rounded-lg border border-surface-border leading-relaxed"></div>
-                </div>
-            </div>
-
-            <!-- Matched Line Items Table with Inline Human Edits -->
-            <div class="space-y-2.5">
-                <div class="flex items-center justify-between">
-                    <h4 class="text-xs font-bold text-ink-primary uppercase tracking-wider">Line Items & Pricing</h4>
-                    <button onclick="openAddItemModal()" class="text-[11px] px-2.5 py-1 rounded bg-surface-subtle hover:bg-surface-border text-ink-primary border border-surface-border font-semibold transition">
-                        + Add Item
-                    </button>
-                </div>
-                <div class="bg-white rounded-xl border border-surface-border overflow-hidden">
-                    <table class="w-full text-left text-xs text-ink-primary">
-                        <thead class="bg-surface-subtle/60 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
-                            <tr>
-                                <th class="px-4 py-2.5">SKU</th>
-                                <th class="px-4 py-2.5">Item Description</th>
-                                <th class="px-4 py-2.5">Qty</th>
-                                <th class="px-4 py-2.5">Base Price</th>
-                                <th class="px-4 py-2.5">Customer Price</th>
-                                <th class="px-4 py-2.5">Total</th>
-                                <th class="px-4 py-2.5 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detail-items-tbody" class="divide-y divide-surface-border">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                    <div class="px-4 py-3 bg-surface-subtle/30 border-t border-surface-border text-right text-xs font-bold text-ink-primary font-mono" id="detail-order-total-sum">
-                        Order Total: $0.00
-                    </div>
-                </div>
-            </div>
-
-            <!-- Order Intelligence Context (Business explanations, not raw AI thought) -->
-            <div class="space-y-2">
-                <h4 class="text-xs font-bold text-ink-primary uppercase tracking-wider">Order Timeline & Audit Trail</h4>
-                <div class="bg-surface-subtle/40 p-3 rounded-xl border border-surface-border max-h-36 overflow-y-auto space-y-1.5" id="detail-timeline-list">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- Staff Human Control Actions -->
-            <div class="flex items-center justify-between pt-4 border-t border-surface-border flex-wrap gap-2">
-                <div class="flex items-center gap-2">
-                    <button onclick="requestClarificationCurrentOrder()" class="px-3 py-2 rounded-lg border border-surface-border hover:bg-surface-subtle text-xs font-semibold text-ink-secondary hover:text-ink-primary transition">
-                        Request Clarification
-                    </button>
-                    <button onclick="updateStatusCurrentOrder('Rejected')" class="px-3 py-2 rounded-lg text-rose-800 hover:bg-rose-50 text-xs font-semibold transition">
-                        Reject
-                    </button>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="updateStatusCurrentOrder('Needs Review')" class="px-3 py-2 rounded-lg border border-surface-border hover:bg-surface-subtle text-xs font-semibold text-ink-secondary hover:text-ink-primary transition">
-                        Mark Review
-                    </button>
-                    <button onclick="updateStatusCurrentOrder('Approved')" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
-                        Approve Order
-                    </button>
-                    <button onclick="updateStatusCurrentOrder('Sent to Production')" class="px-4 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm">
-                        Send to Production
-                    </button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- MODAL 2: CHANNEL INTEGRATION STATUS -->
-    <!-- ========================================================= -->
-    <div id="integrations-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
-        <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4">
+    <div id="demo-scenarios-drawer" class="hidden fixed inset-y-0 right-0 w-96 bg-white border-l border-surface-border shadow-2xl z-40 flex flex-col justify-between">
+        <div class="p-6 space-y-6 overflow-y-auto">
             <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                <h3 class="text-sm font-bold text-ink-primary">
-                    Communication Channels & Status
-                </h3>
-                <button onclick="closeIntegrationsModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
+                <div>
+                    <h3 class="text-sm font-bold text-ink-primary">See OrderStream in Action</h3>
+                    <p class="text-xs text-ink-muted mt-0.5">Test real-world scenarios on Hudson Artisan Wholesale</p>
+                </div>
+                <button onclick="toggleDemoDrawer()" class="text-ink-muted hover:text-ink-primary">&times;</button>
             </div>
+
+            <div class="space-y-3">
+                <button onclick="runScenario('repeat')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
+                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
+                        <span>1. "Same as Last Tuesday"</span>
+                        <span class="text-[10px] text-brand-800 font-semibold">Memory</span>
+                    </div>
+                    <p class="text-[11px] text-ink-secondary">Buyer texts "Same as last Tuesday + 4 baguettes". Auto-clones historical items.</p>
+                </button>
+
+                <button onclick="runScenario('jargon')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
+                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
+                        <span>2. Customer Terminology</span>
+                        <span class="text-[10px] text-brand-800 font-semibold">Language</span>
+                    </div>
+                    <p class="text-[11px] text-ink-secondary">Buyer asks for "4 of the big bread". Matched to Large Sourdough SKU.</p>
+                </button>
+
+                <button onclick="runScenario('anomaly')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
+                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
+                        <span>3. Unusual Quantity Spike</span>
+                        <span class="text-[10px] text-amber-800 font-semibold">Safety</span>
+                    </div>
+                    <p class="text-[11px] text-ink-secondary">Buyer requests 500 baguettes instead of 50. Flagged for staff review.</p>
+                </button>
+
+                <button onclick="runScenario('cutoff')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
+                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
+                        <span>4. Cutoff Policy Inquiry</span>
+                        <span class="text-[10px] text-brand-800 font-semibold">Rules</span>
+                    </div>
+                    <p class="text-[11px] text-ink-secondary">Buyer asks if they can still order for tomorrow. Answered from policy FAQ.</p>
+                </button>
+
+                <button onclick="runScenario('duplicate')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
+                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
+                        <span>5. Duplicate Order Intercept</span>
+                        <span class="text-[10px] text-rose-800 font-semibold">Audit</span>
+                    </div>
+                    <p class="text-[11px] text-ink-secondary">Customer resends identical order within minutes. Intercepts double order.</p>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 border-t border-surface-border bg-surface-subtle/60">
+            <button onclick="toggleDemoDrawer()" class="w-full py-2 bg-ink-primary text-white rounded-lg text-xs font-semibold transition">
+                Close Scenarios
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SLIDE-OVER: ORDER DETAIL & AUDIT TRAIL -->
+    <!-- ========================================================= -->
+    <div id="order-detail-drawer" class="hidden fixed inset-y-0 right-0 w-full max-w-2xl bg-white border-l border-surface-border shadow-2xl z-40 flex flex-col justify-between">
+        <div class="p-6 space-y-6 overflow-y-auto">
             
+            <!-- Top Status Bar -->
+            <div class="flex items-center justify-between pb-4 border-b border-surface-border">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-sm font-bold text-ink-primary" id="drawer-order-id">Order #1042</span>
+                    <span id="drawer-status-pill" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">Approved</span>
+                </div>
+                <button onclick="closeOrderDrawer()" class="text-ink-muted hover:text-ink-primary text-base font-semibold">&times;</button>
+            </div>
+
+            <!-- Duplicate Alert Banner (Conditional) -->
+            <div id="drawer-duplicate-banner" class="hidden bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+                <div class="font-bold flex items-center gap-1.5">
+                    <span>⚠️ Possible Duplicate Order Detected</span>
+                </div>
+                <p class="text-[11px] text-amber-900/90" id="drawer-duplicate-desc">A similar order from this customer was received within the last 60 minutes.</p>
+            </div>
+
+            <!-- Side-by-Side Inbound Message vs Interpreted Order -->
+            <div class="space-y-4">
+                
+                <!-- Raw Inbound Message -->
+                <div class="bg-surface-subtle border border-surface-border rounded-xl p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Inbound Message</span>
+                        <span class="text-[10px] text-ink-muted" id="drawer-inbound-meta">SMS · 09:42 AM</span>
+                    </div>
+                    <div class="text-xs text-ink-primary font-mono whitespace-pre-wrap bg-white p-3 rounded-lg border border-surface-border" id="drawer-raw-message">
+                        <!-- Message text -->
+                    </div>
+                </div>
+
+                <!-- Interpreted Line Items Table -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Interpreted Line Items</span>
+                        <button onclick="openAddItemModal()" class="text-xs text-brand-800 hover:text-brand-900 font-semibold">+ Add Item</button>
+                    </div>
+                    <div class="border border-surface-border rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs text-ink-primary">
+                            <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                                <tr>
+                                    <th class="px-3 py-2">SKU</th>
+                                    <th class="px-3 py-2">Item Description</th>
+                                    <th class="px-3 py-2 text-center">Qty</th>
+                                    <th class="px-3 py-2 text-right">Unit Price</th>
+                                    <th class="px-3 py-2 text-right">Total</th>
+                                    <th class="px-3 py-2 text-right">Edit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="drawer-items-body" class="divide-y divide-surface-border">
+                                <!-- Line items -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="flex justify-between items-center px-1 pt-1 text-xs font-bold text-ink-primary">
+                        <span>Total Order Value:</span>
+                        <span class="font-mono text-sm" id="drawer-order-total">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- Why OrderStream Interpreted It This Way -->
+                <div class="bg-surface-subtle/60 border border-surface-border rounded-xl p-4 space-y-1">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Order Intelligence Interpretation</div>
+                    <p class="text-xs text-ink-secondary" id="drawer-ai-summary">
+                        Extracted line items with customer pricing tier applied.
+                    </p>
+                </div>
+
+                <!-- Customer Context -->
+                <div class="bg-white border border-surface-border rounded-xl p-4 space-y-2">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Customer Context</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-ink-secondary">
+                        <div><span class="font-semibold text-ink-primary">Account:</span> <span id="drawer-cust-acc">ACC-1001</span></div>
+                        <div><span class="font-semibold text-ink-primary">Route:</span> <span id="drawer-cust-route">Route A</span></div>
+                        <div><span class="font-semibold text-ink-primary">Pricing Tier:</span> <span id="drawer-cust-tier">Tier 1 (-10%)</span></div>
+                        <div><span class="font-semibold text-ink-primary">Schedule:</span> <span id="drawer-cust-day">Tue, Thu, Sat</span></div>
+                    </div>
+                    <div class="pt-1 text-xs text-ink-muted" id="drawer-cust-notes">Instructions: Side door delivery before 5 AM.</div>
+                </div>
+
+                <!-- Chronological Audit Trail Timeline -->
+                <div class="space-y-2">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Audit Trail & Timeline</div>
+                    <div id="drawer-timeline-container" class="space-y-2 text-xs border-l-2 border-surface-border pl-4">
+                        <!-- Timeline events -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Action Bar -->
+        <div class="p-6 border-t border-surface-border bg-surface-subtle flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <button onclick="approveCurrentOrder()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
+                    Approve Order
+                </button>
+                <button onclick="sendCurrentOrderToProduction()" class="px-3.5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm">
+                    Send to Production
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="requestClarification()" class="px-3 py-2 rounded-lg border border-surface-border bg-white text-ink-secondary hover:text-ink-primary text-xs font-semibold transition">
+                    Request Clarification
+                </button>
+                <button onclick="rejectCurrentOrder()" class="px-3 py-2 rounded-lg border border-rose-200 text-rose-800 hover:bg-rose-50 text-xs font-semibold transition">
+                    Reject
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL: COMMAND PALETTE (CMD+K / CTRL+K) -->
+    <!-- ========================================================= -->
+    <div id="command-palette-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start justify-center pt-24 p-4 z-50">
+        <div class="bg-white border border-surface-border rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden space-y-0">
+            <div class="p-4 border-b border-surface-border flex items-center gap-3">
+                <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input id="cmd-search-input" oninput="handleCmdSearch(this.value)" type="text" placeholder="Search orders, customers, products or actions..." class="w-full text-xs text-ink-primary outline-none bg-transparent placeholder-ink-muted">
+                <span class="text-[10px] font-mono text-ink-muted bg-surface-subtle px-1.5 py-0.5 rounded border border-surface-border">ESC to close</span>
+            </div>
+            <div id="cmd-search-results" class="max-h-80 overflow-y-auto p-2 space-y-1 text-xs">
+                <!-- Search results or default actions -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL: CONTRIBUTING ORDERS TRACEABILITY -->
+    <!-- ========================================================= -->
+    <div id="contributing-orders-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
+        <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+                <div>
+                    <h3 class="text-sm font-bold text-ink-primary" id="contrib-modal-title">Contributing Orders</h3>
+                    <p class="text-xs text-ink-secondary mt-0.5">Authoritative orders that contribute to this production batch</p>
+                </div>
+                <button onclick="closeContributingOrdersModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs text-ink-primary">
-                    <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                    <thead class="bg-surface-subtle text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
                         <tr>
-                            <th class="px-3 py-2">Channel</th>
-                            <th class="px-3 py-2">Integration</th>
-                            <th class="px-3 py-2">Status</th>
-                            <th class="px-3 py-2">Details</th>
+                            <th class="px-3 py-2">Order #</th>
+                            <th class="px-3 py-2">Customer Name</th>
+                            <th class="px-3 py-2">Route</th>
+                            <th class="px-3 py-2 text-center">Batch Qty</th>
+                            <th class="px-3 py-2 text-right">Status</th>
                         </tr>
                     </thead>
-                    <tbody id="integrations-table-body" class="divide-y divide-surface-border">
-                        <!-- Populated by JS -->
+                    <tbody id="contrib-orders-body" class="divide-y divide-surface-border">
                     </tbody>
                 </table>
             </div>
-
-            <div class="p-3 bg-surface-subtle rounded-lg text-xs text-ink-secondary leading-relaxed">
-                OrderStream ingests inbound texts, WhatsApp messages, and email purchase orders through high-speed non-blocking webhooks.
-            </div>
-
-            <div class="flex justify-end pt-2 border-t border-surface-border">
-                <button onclick="closeIntegrationsModal()" class="px-4 py-1.5 rounded-lg bg-ink-primary text-white text-xs font-semibold">
-                    Done
-                </button>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeContributingOrdersModal()" class="px-4 py-1.5 rounded-lg bg-ink-primary text-white text-xs font-semibold">Done</button>
             </div>
         </div>
     </div>
 
     <!-- ========================================================= -->
-    <!-- MODAL 3: WORKSPACE SETUP / ONBOARDING -->
-    <!-- ========================================================= -->
-    <div id="onboarding-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
-        <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                <h3 class="text-sm font-bold text-ink-primary">
-                    Workspace Configuration
-                </h3>
-                <button onclick="closeOnboardingModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
-            </div>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Bakery Business Name</label>
-                    <input id="onboard-name" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="e.g. Hudson Artisan Breads">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Owner Contact Email</label>
-                    <input id="onboard-email" type="email" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="owner@hudsonbreads.com">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1.5">Active Inbound Channels</label>
-                    <div class="space-y-1.5 text-xs text-ink-primary">
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> SMS Hotline</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> WhatsApp Business</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> Email PO Ingestion</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t border-surface-border">
-                <button onclick="closeOnboardingModal()" class="px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary">Cancel</button>
-                <button onclick="finishOnboarding()" class="px-4 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
-                    Save Workspace
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- MODAL 4: ADD PRODUCT -->
+    <!-- MODAL: ADD PRODUCT -->
     <!-- ========================================================= -->
     <div id="add-product-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
         <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -900,26 +955,26 @@
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">SKU (e.g. BRD-005)</label>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">SKU (e.g. BRD-007)</label>
                     <input id="new-prod-sku" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Item Description</label>
-                    <input id="new-prod-name" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="e.g. Cinnamon Brioche Swirl">
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Item Name</label>
+                    <input id="new-prod-name" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="e.g. Cinnamon Brioche Loaf">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Unit</label>
-                        <input id="new-prod-unit" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="Each">
+                        <input id="new-prod-unit" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="Loaf">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Base Price ($)</label>
-                        <input id="new-prod-price" type="number" step="0.01" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="3.50">
+                        <input id="new-prod-price" type="number" step="0.01" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="6.00">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Aliases / Customer Shorthand</label>
-                    <input id="new-prod-aliases" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="brioche, cinnamon roll, swirl">
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Aliases / Shorthand</label>
+                    <input id="new-prod-aliases" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="brioche, cinnamon loaf, swirl">
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-3 border-t border-surface-border">
@@ -930,11 +985,11 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- MODAL 5: ADD ITEM TO ORDER -->
+    <!-- MODAL: ADD ITEM TO ORDER -->
     <!-- ========================================================= -->
     <div id="add-item-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
         <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-            <h3 class="text-sm font-bold text-ink-primary">Add Item to Order</h3>
+            <h3 class="text-sm font-bold text-ink-primary">Add Line Item</h3>
             <div class="space-y-3">
                 <div>
                     <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Catalog Item</label>
@@ -954,12 +1009,12 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- MODAL 6: CUSTOMER EDIT -->
+    <!-- MODAL: CUSTOMER PROFILE / EDIT -->
     <!-- ========================================================= -->
     <div id="customer-edit-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
         <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                <h3 class="text-sm font-bold text-ink-primary">Customer Profile</h3>
+                <h3 class="text-sm font-bold text-ink-primary" id="cust-modal-title">Customer Profile</h3>
                 <button onclick="closeCustomerModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
             </div>
             <input type="hidden" id="cust-edit-id">
@@ -995,12 +1050,46 @@
             </div>
             <div class="flex justify-end gap-2 pt-3 border-t border-surface-border">
                 <button onclick="closeCustomerModal()" class="px-3 py-1.5 text-xs text-ink-secondary">Cancel</button>
-                <button onclick="submitCustomerUpdate()" class="px-4 py-1.5 rounded-lg bg-ink-primary text-white text-xs font-semibold">Save Profile</button>
+                <button onclick="submitCustomerSave()" class="px-4 py-1.5 rounded-lg bg-ink-primary text-white text-xs font-semibold">Save Profile</button>
             </div>
         </div>
     </div>
 
-    <!-- Application Script -->
+    <!-- ========================================================= -->
+    <!-- MODAL: WORKSPACE ONBOARDING / CONFIG -->
+    <!-- ========================================================= -->
+    <div id="onboarding-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
+        <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+                <h3 class="text-sm font-bold text-ink-primary">Workspace Configuration</h3>
+                <button onclick="closeOnboardingModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Business Name</label>
+                    <input id="onboard-name" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Contact Email</label>
+                    <input id="onboard-email" type="email" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1.5">Active Channels</label>
+                    <div class="space-y-1.5 text-xs text-ink-primary">
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> SMS Hotline</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> WhatsApp Business</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> Email Ingestion</label>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-surface-border">
+                <button onclick="closeOnboardingModal()" class="px-3 py-1.5 text-xs text-ink-secondary">Cancel</button>
+                <button onclick="finishOnboarding()" class="px-4 py-1.5 rounded-lg bg-ink-primary text-white text-xs font-semibold">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Controller Script -->
     <script src="/static/app.js"></script>
 </body>
 </html>
