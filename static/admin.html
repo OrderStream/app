@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FBFBFA]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORDERSTREAM — Platform Super-Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        surface: {
+                            base: '#FBFBFA',
+                            card: '#FFFFFF',
+                            subtle: '#F4F4F2',
+                            border: '#E8E8E4',
+                        },
+                        ink: {
+                            primary: '#111827',
+                            secondary: '#4B5563',
+                            muted: '#9CA3AF',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full text-ink-primary font-sans antialiased bg-[#FBFBFA]">
+    
+    <!-- MASTER LOGIN SECURITY GATE -->
+    <div id="admin-login-overlay" class="fixed inset-0 bg-[#FBFBFA] flex items-center justify-center p-4 z-50">
+        <div class="bg-white border border-surface-border rounded-2xl p-8 max-w-sm w-full shadow-xl space-y-5 text-center">
+            <div class="w-10 h-10 bg-ink-primary rounded-xl flex items-center justify-center text-white text-base font-bold mx-auto shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <div>
+                <h2 class="text-base font-bold text-ink-primary">Platform Administrator</h2>
+                <p class="text-xs text-ink-secondary mt-0.5">Enter your master administrator key to manage the tenant fleet.</p>
+            </div>
+            <div class="space-y-3 pt-1">
+                <div>
+                    <input id="admin-pass-input" type="password" class="w-full bg-surface-subtle border border-surface-border rounded-lg px-3.5 py-2.5 text-xs text-ink-primary text-center font-mono outline-none focus:border-ink-primary" placeholder="Enter master key...">
+                </div>
+                <div id="login-error-msg" class="hidden text-xs text-rose-800 font-semibold text-center bg-rose-50 p-2 rounded-lg border border-rose-200">
+                    Invalid Master Admin Key.
+                </div>
+                <button onclick="submitAdminLogin()" class="w-full bg-ink-primary hover:bg-black text-white font-semibold py-2.5 rounded-lg transition text-xs shadow-sm">
+                    Authenticate
+                </button>
+            </div>
+            <div class="pt-1">
+                <a href="/" class="text-xs text-ink-muted hover:text-ink-primary transition">← Return to Operations Workspace</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN SUPER-ADMIN HUB CONTENT -->
+    <div id="admin-main-content" class="hidden max-w-7xl mx-auto p-6 md:p-10 space-y-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-surface-border gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-ink-primary rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+                        <rect x="2" y="7" width="8" height="2" rx="1" fill="currentColor" fill-opacity="0.8"/>
+                        <rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor" fill-opacity="0.6"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-bold text-ink-primary tracking-tight">OrderStream Platform Fleet</h1>
+                        <span class="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded font-mono font-semibold">
+                            Master Admin
+                        </span>
+                    </div>
+                    <p class="text-xs text-ink-secondary mt-0.5">Tenant workspaces, dedicated Twilio hotlines, and platform metrics</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2.5">
+                <button onclick="openProvisionModal()" class="text-xs bg-ink-primary hover:bg-black text-white font-semibold px-4 py-2 rounded-lg transition shadow-sm">
+                    + Provision New Bakery
+                </button>
+                <a href="/" class="text-xs bg-white hover:bg-surface-subtle text-ink-primary font-semibold px-3.5 py-2 rounded-lg border border-surface-border transition">
+                    Client View
+                </a>
+                <button onclick="logoutAdmin()" class="text-xs text-ink-muted hover:text-rose-800 px-3 py-2 transition font-medium">
+                    Lock
+                </button>
+            </div>
+        </header>
+
+        <!-- Global Platform KPIs -->
+        <section class="grid grid-cols-2 lg:grid-cols-5 gap-6">
+            <div class="border-l-2 border-ink-primary pl-4 py-1">
+                <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Client Shops</div>
+                <div id="stat-admin-tenants" class="text-2xl font-bold text-ink-primary mt-1">0</div>
+                <div class="text-[11px] text-ink-secondary mt-0.5">Active workspaces</div>
+            </div>
+            <div class="border-l-2 border-emerald-700 pl-4 py-1">
+                <div class="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">Orders Ingested</div>
+                <div id="stat-admin-orders" class="text-2xl font-bold text-ink-primary mt-1">0</div>
+                <div class="text-[11px] text-ink-secondary mt-0.5">Across all hotlines</div>
+            </div>
+            <div class="border-l-2 border-surface-border pl-4 py-1">
+                <div class="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Wholesale Buyers</div>
+                <div id="stat-admin-buyers" class="text-2xl font-bold text-ink-primary mt-1">0</div>
+                <div class="text-[11px] text-ink-secondary mt-0.5">Connected accounts</div>
+            </div>
+            <div class="border-l-2 border-amber-600 pl-4 py-1">
+                <div class="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Anomalies Intercepted</div>
+                <div id="stat-admin-anomalies" class="text-2xl font-bold text-amber-800 mt-1">0</div>
+                <div class="text-[11px] text-amber-900/80 mt-0.5">Kitchen mistakes prevented</div>
+            </div>
+            <div class="border-l-2 border-brand-800 pl-4 py-1">
+                <div class="text-[11px] font-semibold text-brand-800 uppercase tracking-wider">Total Volume</div>
+                <div id="stat-admin-revenue" class="text-2xl font-bold text-ink-primary mt-1">$0.00</div>
+                <div class="text-[11px] text-ink-secondary mt-0.5">Gross order throughput</div>
+            </div>
+        </section>
+
+        <!-- Fleet Table -->
+        <main class="bg-white border border-surface-border rounded-xl shadow-sm overflow-hidden space-y-0">
+            <div class="p-4 border-b border-surface-border flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-ink-primary">
+                        Client Workspaces & Assigned Lines
+                    </h3>
+                    <p class="text-xs text-ink-secondary mt-0.5">Overview of tenant accounts, Twilio line assignments, and billing states.</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-ink-primary">
+                    <thead class="bg-surface-subtle/80 text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                        <tr>
+                            <th class="px-5 py-3.5">Business Name & Slug</th>
+                            <th class="px-5 py-3.5">Assigned Hotline</th>
+                            <th class="px-5 py-3.5">Contact Details</th>
+                            <th class="px-5 py-3.5 text-center">Orders</th>
+                            <th class="px-5 py-3.5">Subscription</th>
+                            <th class="px-5 py-3.5">Cutoff</th>
+                            <th class="px-5 py-3.5 text-right">Access</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenants-table-body" class="divide-y divide-surface-border">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- PROVISION CLIENT MODAL -->
+    <div id="provision-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 z-50">
+        <div class="bg-white border border-surface-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+                <h3 class="text-sm font-bold text-ink-primary">
+                    Provision New Bakery Workspace
+                </h3>
+                <button onclick="closeProvisionModal()" class="text-ink-muted hover:text-ink-primary">&times;</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Bakery Name</label>
+                    <input id="prov-name" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="e.g. Hudson Artisan Breads">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Workspace Slug</label>
+                        <input id="prov-slug" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="hudsonbreads">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Assigned Hotline Number</label>
+                        <input id="prov-number" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="+1 (555) 234-5678">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Contact Email</label>
+                        <input id="prov-email" type="email" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="owner@hudsonbreads.com">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Contact Phone</label>
+                        <input id="prov-phone" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" placeholder="+1 (555) 019-2834">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Cutoff Time</label>
+                        <input id="prov-cutoff" type="text" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="23:00 (11:00 PM)">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-ink-muted mb-1">Min. Order ($)</label>
+                        <input id="prov-min-order" type="number" class="w-full bg-surface-subtle/60 border border-surface-border rounded-lg px-3 py-2 text-xs text-ink-primary" value="35.00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-surface-border">
+                <button onclick="closeProvisionModal()" class="px-3 py-1.5 text-xs text-ink-secondary">Cancel</button>
+                <button onclick="submitProvisioning()" class="px-4 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white font-semibold text-xs transition">
+                    Launch Workspace
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminAuthToken = sessionStorage.getItem('orderstream_admin_key');
+
+        function checkAuth() {
+            if (adminAuthToken) {
+                document.getElementById('admin-login-overlay').classList.add('hidden');
+                document.getElementById('admin-main-content').classList.remove('hidden');
+                fetchAdminOverview();
+            } else {
+                document.getElementById('admin-login-overlay').classList.remove('hidden');
+                document.getElementById('admin-main-content').classList.add('hidden');
+            }
+        }
+
+        async function submitAdminLogin() {
+            const pass = document.getElementById('admin-pass-input').value;
+            const errBox = document.getElementById('login-error-msg');
+            errBox.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    adminAuthToken = data.token;
+                    sessionStorage.setItem('orderstream_admin_key', data.token);
+                    checkAuth();
+                } else {
+                    errBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errBox.classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem('orderstream_admin_key');
+            adminAuthToken = null;
+            checkAuth();
+        }
+
+        async function fetchAdminOverview() {
+            try {
+                const res = await fetch('/api/admin/overview', {
+                    headers: { 'X-Admin-Key': adminAuthToken }
+                });
+
+                if (res.status === 401) {
+                    logoutAdmin();
+                    return;
+                }
+
+                const data = await res.json();
+                
+                document.getElementById('stat-admin-tenants').innerText = data.total_tenants;
+                document.getElementById('stat-admin-orders').innerText = data.total_orders_ingested;
+                document.getElementById('stat-admin-buyers').innerText = data.total_wholesale_buyers;
+                document.getElementById('stat-admin-anomalies').innerText = data.total_anomalies_intercepted;
+                document.getElementById('stat-admin-revenue').innerText = `$${data.total_revenue_processed.toFixed(2)}`;
+
+                const tbody = document.getElementById('tenants-table-body');
+                tbody.innerHTML = '';
+
+                data.tenants.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-surface-subtle/50 transition';
+                    tr.innerHTML = `
+                        <td class="px-5 py-3.5 font-semibold text-ink-primary">
+                            <div class="font-bold text-xs">${t.name}</div>
+                            <div class="text-[10px] text-ink-muted font-mono">Slug: /${t.slug} • Tenant ID #${t.id}</div>
+                        </td>
+                        <td class="px-5 py-3.5 font-mono text-ink-primary text-xs font-semibold">
+                            ${t.assigned_number}
+                        </td>
+                        <td class="px-5 py-3.5 text-ink-secondary">
+                            <div>${t.contact_email}</div>
+                            <div class="text-[10px] text-ink-muted">${t.contact_phone}</div>
+                        </td>
+                        <td class="px-5 py-3.5 text-center font-mono font-bold text-ink-primary">
+                            ${t.total_orders}
+                        </td>
+                        <td class="px-5 py-3.5">
+                            <span class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                ${t.subscription_status}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3.5 text-ink-secondary font-mono text-[11px]">
+                            ${t.cutoff_time} (Min: $${t.minimum_order.toFixed(2)})
+                        </td>
+                        <td class="px-5 py-3.5 text-right">
+                            <a href="/?tenant=${t.id}" class="text-xs text-ink-primary hover:text-black font-semibold border border-surface-border px-3 py-1 rounded-lg bg-surface-subtle hover:bg-surface-border transition">
+                                Open Dashboard →
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function openProvisionModal() {
+            document.getElementById('provision-modal').classList.remove('hidden');
+        }
+        function closeProvisionModal() {
+            document.getElementById('provision-modal').classList.add('hidden');
+        }
+
+        async function submitProvisioning() {
+            const name = document.getElementById('prov-name').value;
+            const slug = document.getElementById('prov-slug').value || name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const number = document.getElementById('prov-number').value;
+            const email = document.getElementById('prov-email').value;
+            const phone = document.getElementById('prov-phone').value;
+            const cutoff = document.getElementById('prov-cutoff').value;
+            const minOrder = parseFloat(document.getElementById('prov-min-order').value) || 35.0;
+
+            if (!name || !number) {
+                alert('Please enter business name and assigned phone number.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/provision', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': adminAuthToken
+                    },
+                    body: JSON.stringify({
+                        name, slug, assigned_inbound_number: number,
+                        contact_email: email, contact_phone: phone,
+                        order_cutoff_time: cutoff, minimum_order_amount: minOrder
+                    })
+                });
+                const data = await res.json();
+                alert(data.message);
+                closeProvisionModal();
+                fetchAdminOverview();
+            } catch (err) {
+                alert('Error provisioning workspace.');
+            }
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

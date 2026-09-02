@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import models
 from database import engine, SessionLocal
-from routers import webhook, orders
+from routers import webhook, orders, admin
 from services.seeder import seed_default_data
 
 # Initialize Database Schema
@@ -24,11 +25,17 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include Routers
 app.include_router(webhook.router, prefix="/api/webhook", tags=["Webhook"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
+# Route 1: Tenant / Client Dashboard
 @app.get("/")
 def read_root():
-    from fastapi.responses import FileResponse
     return FileResponse("static/index.html")
+
+# Route 2: Master Super-Admin Command Hub (For You)
+@app.get("/admin")
+def read_admin():
+    return FileResponse("static/admin.html")
 
 if __name__ == "__main__":
     import uvicorn
