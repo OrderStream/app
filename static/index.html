@@ -877,10 +877,10 @@
         <!-- Action Bar -->
         <div class="p-6 border-t border-surface-border bg-surface-subtle flex items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-                <button onclick="approveCurrentOrder()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
+                <button id="btn-approve-order" onclick="approveCurrentOrder()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm disabled:opacity-50">
                     Approve Order
                 </button>
-                <button onclick="sendCurrentOrderToProduction()" class="px-3.5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm">
+                <button id="btn-send-production" onclick="sendCurrentOrderToProduction()" class="px-3.5 py-2 rounded-lg bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold transition shadow-sm disabled:opacity-50">
                     Send to Production
                 </button>
             </div>

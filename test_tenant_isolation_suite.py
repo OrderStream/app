@@ -14,6 +14,7 @@ from services.seeder import seed_default_data
 class TenantIsolationTestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["ORDERSTREAM_TEST_ENV"] = "true"
         # Reset and seed database
         models.Base.metadata.drop_all(bind=database.engine)
         models.Base.metadata.create_all(bind=database.engine)

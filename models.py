@@ -176,7 +176,7 @@ class InboundWebhookEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), index=True)
     provider = Column(String(50), default="twilio_sms") # twilio_sms, twilio_whatsapp, email, manual
-    provider_message_id = Column(String(100), index=True, nullable=True) # e.g. Twilio MessageSid
+    provider_message_id = Column(String(100), index=True, unique=True, nullable=True) # e.g. Twilio MessageSid
     sender = Column(String(100))
     recipient = Column(String(100), nullable=True)
     payload = Column(Text)
