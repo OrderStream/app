@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 
-ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "OrderStream_MasterAdmin_2026_SecureKey!")
+ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY")
 
 def get_current_tenant(
     request: Request,
@@ -25,7 +25,7 @@ def get_current_tenant(
     target_identifier = None
 
     # Priority 1: Master Admin Impersonation
-    if x_admin_key and x_admin_key.strip() == ADMIN_SECRET_KEY and x_impersonate_tenant:
+    if x_admin_key and ADMIN_SECRET_KEY and x_admin_key.strip() == ADMIN_SECRET_KEY and x_impersonate_tenant:
         target_identifier = x_impersonate_tenant.strip()
 
     # Priority 2: Verified Tenant Header

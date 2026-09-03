@@ -16,12 +16,17 @@ from services.intelligence import process_order_intelligence, run_copilot_query,
 class OrderStreamPilotTestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["ORDERSTREAM_TEST_ENV"] = "true"
         # Reset and seed test database
         models.Base.metadata.drop_all(bind=engine)
         models.Base.metadata.create_all(bind=engine)
         db = SessionLocal()
         seed_default_data(db)
         db.close()
+
+        from fastapi.testclient import TestClient
+        from main import app
+        cls.client = TestClient(app)
 
     def setUp(self):
         self.db = SessionLocal()
@@ -185,6 +190,62 @@ class OrderStreamPilotTestSuite(unittest.TestCase):
         b2_skus = [p.sku for p in b2_products]
         self.assertIn("MCR-001", b2_skus)
         self.assertNotIn("BRD-001", b2_skus)
+
+    def test_11_duplicate_webhook_integrity(self):
+        """Phase 5: Prevent duplicate order processing on identical webhooks."""
+        payload = {
+            "From": "+15551234",
+            "Body": "Need 5 loaves of sourdough",
+            "To": "+18885550000",
+            "MessageSid": "SM_INTEGRITY_TEST_1",
+            "Channel": "SMS"
+        }
+
+        # Disable Twilio signature check for this test
+        os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+        # First request should succeed and create the order
+        res1 = self.client.post("/api/webhook/twilio", data=payload)
+        self.assertEqual(res1.status_code, 200)
+
+        initial_order_count = self.db.query(models.Order).count()
+
+        # Second request with same MessageSid should be caught by idempotency
+        res2 = self.client.post("/api/webhook/twilio", data=payload)
+        self.assertEqual(res2.status_code, 200)
+        self.assertIn(b"already received", res2.content)
+
+        # Order count should NOT increase
+        final_order_count = self.db.query(models.Order).count()
+        self.assertEqual(initial_order_count, final_order_count)
+
+    def test_12_ai_failure_fallback(self):
+        """Phase 3: Ensure AI parsing failure doesn't silently drop the inbound message."""
+        payload = {
+            "From": "+15551234",
+            "Body": "Fail the AI please",
+            "To": "+18885550000",
+            "MessageSid": "SM_FAIL_TEST_1",
+            "Channel": "SMS"
+        }
+
+        os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+        # Force the parse function to fail by patching it or passing bad data
+        # We simulate this by having the AI throw an exception, let's mock it
+        from unittest.mock import patch
+        with patch('routers.webhook.parse_order_text', side_effect=Exception("Mocked AI Timeout")):
+            res = self.client.post("/api/webhook/twilio", data=payload)
+
+        self.assertEqual(res.status_code, 200)
+
+        # Verify order was still created in Needs Review state
+        order = self.db.query(models.Order).filter(models.Order.raw_message == "Fail the AI please").first()
+        self.assertIsNotNone(order)
+        self.assertEqual(order.status, "Needs Review")
+        self.assertTrue(order.is_anomaly)
+        self.assertEqual(order.confidence_score, 0)
+        self.assertIn("Mocked AI Timeout", order.timeline[0].description)
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,7 @@ let currentDetailOrder = null;
 let cachedCatalog = [];
 let cachedOrders = [];
 let searchDebounceTimer = null;
+let orderPollingInterval = null;
 
 // -------------------------------------------------------------
 // 1. INITIALIZATION & SHORTCUTS
@@ -15,6 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab('overview');
     initCommandPalette();
     initNotificationEvents();
+
+    // Phase 7: Simple polling for data freshness
+    orderPollingInterval = setInterval(() => {
+        if (currentTab === 'orders') {
+            fetchOrders(true);
+        } else if (currentTab === 'overview') {
+            renderOverviewDashboard();
+        }
+    }, 15000); // 15 seconds
 });
 
 function initCommandPalette() {
@@ -410,7 +420,7 @@ function handleOrdersSearch(e) {
     fetchOrders();
 }
 
-async function fetchOrders() {
+async function fetchOrders(isBackgroundRefresh = false) {
     try {
         let url = '/api/orders/?';
         if (activeStatus !== 'ALL') url += `status=${encodeURIComponent(activeStatus)}&`;
@@ -422,6 +432,12 @@ async function fetchOrders() {
         const res = await fetch(url);
         if (!res.ok) return;
         const orders = await res.json();
+
+        // Phase 7: Avoid deep re-render on poll if data didn't change
+        if (isBackgroundRefresh && JSON.stringify(cachedOrders) === JSON.stringify(orders)) {
+            return;
+        }
+
         cachedOrders = orders;
         
         const tbody = document.getElementById('orders-table-body');
@@ -444,7 +460,8 @@ async function fetchOrders() {
             if (itemsSummary.length > 45) itemsSummary = itemsSummary.substring(0, 45) + '...';
 
             let reasonText = 'Standard order — verified';
-            if (order.is_anomaly) reasonText = `⚠️ ${order.anomaly_reason}`;
+            if (order.confidence_score === 0) reasonText = `🚨 AI Parsing Failed - Needs Manual Entry`;
+            else if (order.is_anomaly) reasonText = `⚠️ ${order.anomaly_reason}`;
             else if (order.is_duplicate) reasonText = `⚠️ Suspected duplicate order`;
             else if (order.history_cloned) reasonText = `✨ Cloned from recurring schedule`;
 
@@ -534,7 +551,13 @@ async function openOrderDetail(orderId) {
         document.getElementById('drawer-cust-tier').innerText = `${order.pricing_tier} (${order.discount_percentage}% off)`;
         document.getElementById('drawer-cust-day').innerText = order.usual_order_day || 'Schedule active';
         document.getElementById('drawer-cust-notes').innerText = `Instructions: ${order.special_instructions || 'None'}`;
-        document.getElementById('drawer-ai-summary').innerText = order.ai_interpretation_summary || 'Standard line items parsed.';
+
+        const aiSummaryEl = document.getElementById('drawer-ai-summary');
+        if (order.confidence_score === 0) {
+            aiSummaryEl.innerHTML = `<span class="text-rose-700 font-bold">🚨 AI Parsing Failed:</span> System error parsing raw message. Please enter line items manually.`;
+        } else {
+            aiSummaryEl.innerText = order.ai_interpretation_summary || 'Standard line items parsed.';
+        }
 
         // Order Items Table
         renderDrawerItems(order.items, order.order_total);
@@ -567,9 +590,16 @@ function renderDrawerItems(items, total) {
     tbody.innerHTML = '';
     items.forEach(item => {
         const tr = document.createElement('tr');
+        let confWarning = '';
+        if (item.match_confidence && item.match_confidence < 80) {
+            confWarning = `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900">Low Confidence (${item.match_confidence}%)</span>`;
+        } else if (item.match_confidence === 0) {
+            confWarning = `<span class="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-900">AI Failed</span>`;
+        }
+
         tr.innerHTML = `
             <td class="px-3 py-2 font-mono text-[11px] text-ink-muted">${item.sku}</td>
-            <td class="px-3 py-2 font-medium">${item.item_name}</td>
+            <td class="px-3 py-2 font-medium">${item.item_name}${confWarning}</td>
             <td class="px-3 py-2 text-center">
                 <input type="number" min="1" value="${item.quantity}" onchange="updateItemQty(${item.id}, this.value)" class="w-14 text-center border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono font-bold">
             </td>
@@ -593,6 +623,11 @@ function closeOrderDrawer() {
 
 async function approveCurrentOrder() {
     if (!currentDetailOrderId) return;
+    const btn = document.getElementById('btn-approve-order');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Processing...';
+    }
     try {
         const res = await fetch(`/api/orders/${currentDetailOrderId}/status`, {
             method: 'POST',
@@ -600,17 +635,27 @@ async function approveCurrentOrder() {
             body: JSON.stringify({ status: 'Approved', actor: 'Alex (Operations)' })
         });
         if (res.ok) {
-            openOrderDetail(currentDetailOrderId);
+            await openOrderDetail(currentDetailOrderId);
             if (currentTab === 'overview') renderOverviewDashboard();
             else fetchOrders();
         }
     } catch (err) {
         console.error(err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Approve Order';
+        }
     }
 }
 
 async function sendCurrentOrderToProduction() {
     if (!currentDetailOrderId) return;
+    const btn = document.getElementById('btn-send-production');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Processing...';
+    }
     try {
         const res = await fetch(`/api/orders/${currentDetailOrderId}/status`, {
             method: 'POST',
@@ -618,12 +663,17 @@ async function sendCurrentOrderToProduction() {
             body: JSON.stringify({ status: 'Sent to Production', actor: 'Alex (Operations)' })
         });
         if (res.ok) {
-            openOrderDetail(currentDetailOrderId);
+            await openOrderDetail(currentDetailOrderId);
             if (currentTab === 'overview') renderOverviewDashboard();
             else fetchOrders();
         }
     } catch (err) {
         console.error(err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Send to Production';
+        }
     }
 }
 

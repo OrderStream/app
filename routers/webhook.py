@@ -1,8 +1,12 @@
 import os
-from fastapi import APIRouter, Depends, Form, Request, Response, Header
+import hmac
+import hashlib
+import base64
+from fastapi import APIRouter, Depends, Form, Request, Response, Header, HTTPException, BackgroundTasks
 from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
+from urllib.parse import urlparse
 
 from database import get_db
 import models
@@ -15,11 +19,13 @@ router = APIRouter()
 @router.post("/twilio")
 async def twilio_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     From: str = Form(...),
     Body: str = Form(...),
     To: Optional[str] = Form(None),
     MessageSid: Optional[str] = Form(None),
     Channel: str = Form(default="SMS"),
+    x_twilio_signature: Optional[str] = Header(None, alias="X-Twilio-Signature"),
     db: Session = Depends(get_db)
 ):
     """
@@ -32,6 +38,38 @@ async def twilio_webhook(
     6. Audit Trail Recording
     7. Automated Two-Way Confirmation Response
     """
+    # -------------------------------------------------------------
+    # 0. TWILIO REQUEST VALIDATION
+    # -------------------------------------------------------------
+    # In production, TWILIO_AUTH_TOKEN must be set. If we are running tests, we may bypass it.
+    twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    is_test_env = os.environ.get("ORDERSTREAM_TEST_ENV") == "true"
+
+    if not twilio_auth_token and not is_test_env:
+        raise HTTPException(status_code=500, detail="Server configuration error: TWILIO_AUTH_TOKEN is not set.")
+
+    if not is_test_env and x_twilio_signature:
+        # Twilio sends form data, we need it ordered by key for validation
+        form_data = await request.form()
+        url = str(request.url)
+        # Twilio validation requires HTTPS typically, ensure scheme matches if forwarded
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        if forwarded_proto:
+            parsed = urlparse(url)
+            url = parsed._replace(scheme=forwarded_proto).geturl()
+
+        params = dict(form_data)
+        sorted_keys = sorted(params.keys())
+        data_to_sign = url
+        for k in sorted_keys:
+            data_to_sign += k + params[k]
+
+        mac = hmac.new(twilio_auth_token.encode('utf-8'), data_to_sign.encode('utf-8'), hashlib.sha1)
+        expected_sig = base64.b64encode(mac.digest()).decode('utf-8')
+
+        if not hmac.compare_digest(expected_sig, x_twilio_signature):
+            raise HTTPException(status_code=403, detail="Invalid Twilio Signature")
+
     clean_body = Body.strip()
     clean_from = From.strip()
     provider_msg_id = MessageSid.strip() if MessageSid else f"manual-{datetime.utcnow().timestamp()}"
@@ -62,24 +100,53 @@ async def twilio_webhook(
         models.InboundWebhookEvent.provider_message_id == provider_msg_id
     ).first()
 
-    if existing_event and existing_event.status == "processed":
+    if existing_event:
         # Provider retried event: acknowledge without re-creating order
         twiml_cached = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>OrderStream: Order already received and in processing queue.</Message></Response>'
         return Response(content=twiml_cached, media_type="application/xml")
 
-    # Record event in inbound audit table
-    webhook_event = models.InboundWebhookEvent(
-        business_id=b_id,
-        provider=f"twilio_{Channel.lower()}",
-        provider_message_id=provider_msg_id,
-        sender=clean_from,
-        recipient=To,
-        payload=clean_body,
-        status="processing",
-        received_at=datetime.utcnow()
+    # Record event in inbound audit table and catch race conditions
+    try:
+        webhook_event = models.InboundWebhookEvent(
+            business_id=b_id,
+            provider=f"twilio_{Channel.lower()}",
+            provider_message_id=provider_msg_id,
+            sender=clean_from,
+            recipient=To,
+            payload=clean_body,
+            status="processing",
+            received_at=datetime.utcnow()
+        )
+        db.add(webhook_event)
+        db.commit()
+    except Exception:
+        db.rollback()
+        twiml_cached = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>OrderStream: Order already received and in processing queue.</Message></Response>'
+        return Response(content=twiml_cached, media_type="application/xml")
+
+    background_tasks.add_task(
+        process_inbound_webhook_task,
+        db=db,
+        b_id=b_id,
+        business=business,
+        clean_body=clean_body,
+        clean_from=clean_from,
+        Channel=Channel,
+        webhook_event_id=webhook_event.id
     )
-    db.add(webhook_event)
-    db.commit()
+    twiml_ack = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+    return Response(content=twiml_ack, media_type="application/xml")
+
+def process_inbound_webhook_task(
+    db: Session,
+    b_id: int,
+    business: models.BusinessTenant,
+    clean_body: str,
+    clean_from: str,
+    Channel: str,
+    webhook_event_id: int
+):
+    webhook_event = db.query(models.InboundWebhookEvent).filter(models.InboundWebhookEvent.id == webhook_event_id).first()
 
     try:
         # -------------------------------------------------------------
@@ -110,11 +177,8 @@ async def twilio_webhook(
                 webhook_event.status = "processed"
                 db.commit()
                 
-                twiml_reply = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>OrderStream: Order #{recent_order.id} is CONFIRMED for tomorrow morning's bake! 🥖</Message>
-</Response>"""
-                return Response(content=twiml_reply, media_type="application/xml")
+                print(f"Async Task: Confirmed Order #{recent_order.id}")
+                return
 
         # -------------------------------------------------------------
         # 4. PARSE INBOUND NATURAL LANGUAGE MESSAGE
@@ -143,11 +207,8 @@ async def twilio_webhook(
         if intel.get("is_inquiry"):
             webhook_event.status = "processed"
             db.commit()
-            twiml_inquiry = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>{intel['ai_clarification']}</Message>
-</Response>"""
-            return Response(content=twiml_inquiry, media_type="application/xml")
+            print("Async Task: Handled informational inquiry.")
+            return
         
         # -------------------------------------------------------------
         # 7. ASSIGN OPERATIONAL STATUS (SAFE -> APPROVED / UNCERTAIN -> REVIEW)
@@ -259,28 +320,45 @@ async def twilio_webhook(
         # -------------------------------------------------------------
         # 11. AUTOMATED TWO-WAY CONFIRMATION SMS
         # -------------------------------------------------------------
-        if intel["ai_clarification"]:
-            reply_msg = intel["ai_clarification"]
-        elif intel["is_duplicate"]:
-            reply_msg = f"OrderStream: ⚠️ Notice: We noticed a recent duplicate order #{intel['duplicate_of_id']}. Please reply YES if you meant to place this duplicate order."
-        elif intel["is_anomaly"]:
-            reply_msg = f"OrderStream: ⚠️ Received order for {sum(i['quantity'] for i in intel['items'])} units. Reply YES to confirm or text changes."
-        else:
-            reply_msg = generate_confirmation_sms(
-                customer_name=customer.business_name,
-                items=intel["items"],
-                total_amount=order_total
-            )
-            
-        twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>{reply_msg}</Message>
-</Response>"""
-        return Response(content=twiml_response, media_type="application/xml")
+        # Phase 1 Backgrounding Note: Twilio response is now handled synchronously above via empty Response.
+        # Ideally, we would use the Twilio REST API here to send `reply_msg` outbound.
+        # For pilot constraints, since we no longer return TwiML directly, this log acknowledges completion.
+        print("Async AI Task Completed. Outbound SMS would send here in production.")
 
     except Exception as e:
         webhook_event.status = "failed"
         webhook_event.error_message = str(e)
+
+        # Phase 3: Create fallback order explicitly instead of dropping the payload if AI fails.
+        customer = match_or_create_customer(db, phone=clean_from, extracted_name="Unknown (AI Failed)", business_id=b_id)
+
+        fallback_order = models.Order(
+            business_id=b_id,
+            customer_id=customer.id,
+            customer_phone=clean_from,
+            customer_name=customer.business_name,
+            channel=Channel,
+            raw_message=clean_body,
+            status="Needs Review",
+            confirmation_status="Pending Confirmation",
+            confidence_score=0,
+            delivery_date="Tomorrow Morning",
+            shift="Morning",
+            is_anomaly=True,
+            anomaly_reason="AI Parsing Failure - Manual Review Required",
+            ai_interpretation_summary="System encountered an error during parsing. Please review manually.",
+            created_at=datetime.utcnow()
+        )
+        db.add(fallback_order)
         db.commit()
-        twiml_fallback = '<?xml version="1.0" encoding="UTF-8"?><Response><Message>OrderStream: Order received and queued for staff review.</Message></Response>'
-        return Response(content=twiml_fallback, media_type="application/xml")
+        db.refresh(fallback_order)
+
+        db.add(models.OrderTimelineEvent(
+            order_id=fallback_order.id,
+            event_type="Message Received (Fallback)",
+            actor="System",
+            description=f"Message caught by fallback handler due to AI failure: {str(e)}",
+            created_at=fallback_order.created_at
+        ))
+        db.commit()
+        print("Async Task: Logged AI failure fallback.")

@@ -10,7 +10,7 @@ import models
 router = APIRouter()
 
 # Read Master Admin Key from environment (default strong fallback for local dev)
-ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "OrderStream_MasterAdmin_2026_SecureKey!")
+ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY")
 
 def verify_admin_access(
     x_admin_key: Optional[str] = Header(None),
@@ -19,6 +19,11 @@ def verify_admin_access(
     """
     Security Gate: Rejects any request that doesn't provide the Master Admin Key.
     """
+    if not ADMIN_SECRET_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: ADMIN_SECRET_KEY is not set."
+        )
     provided_key = x_admin_key or admin_token
     if not provided_key or provided_key != ADMIN_SECRET_KEY:
         raise HTTPException(

@@ -443,6 +443,11 @@ def update_order_status(
         raise HTTPException(status_code=404, detail="Order not found in this workspace.")
         
     old_status = order.status
+
+    # Phase 5: Prevent duplicate approval updates
+    if old_status == req.status:
+        return {"message": f"Order is already {req.status}."}
+
     order.status = req.status
     order.reviewed_by = req.actor
     order.reviewed_at = datetime.utcnow()
