@@ -82,7 +82,7 @@
         }
         /* Purpose-Built Bakery Clipboard Print Styles */
         @media print {
-            aside, header, #command-palette-modal, #demo-scenarios-drawer, 
+            aside, header, #command-palette-modal,
             #order-detail-drawer, #contributing-orders-modal, .no-print, button {
                 display: none !important;
             }
@@ -185,10 +185,6 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                             <span>Rules & Knowledge</span>
                         </button>
-                        <button onclick="switchTab('copilot')" id="nav-btn-copilot" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold nav-item-inactive transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                            <span>Ask OrderStream</span>
-                        </button>
                     </nav>
                 </div>
 
@@ -199,10 +195,6 @@
                             <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Export (QuickBooks)</span>
                         </a>
-                        <button onclick="openIntegrationsModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold nav-item-inactive transition">
-                            <svg class="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                            <span>Channels</span>
-                        </button>
                     </nav>
                 </div>
 
@@ -277,11 +269,6 @@
                     </div>
                 </div>
 
-                <!-- Discreet Demo Scenarios Drawer Toggle -->
-                <button onclick="toggleDemoDrawer()" id="demo-drawer-toggle" class="px-3 py-1.5 rounded-lg border border-surface-border text-xs font-semibold text-ink-secondary hover:text-ink-primary hover:border-ink-faint transition flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>See OrderStream in Action</span>
-                </button>
 
                 <!-- Primary Action: Configure Channels -->
                 <button onclick="openOnboardingModal()" class="px-3.5 py-1.5 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition shadow-sm">
@@ -688,93 +675,12 @@
             <!-- ========================================================= -->
             <!-- VIEW 7: OPERATIONS ASSISTANT -->
             <!-- ========================================================= -->
-            <section id="tab-copilot" class="hidden space-y-6">
-                <div class="pb-4 border-b border-surface-border">
-                    <h2 class="text-lg font-bold text-ink-primary">Operations Intelligence</h2>
-                    <p class="text-xs text-ink-secondary mt-0.5">Grounded answers regarding today's orders, anomalies, and tomorrow's production requirements</p>
-                </div>
-
-                <div class="bg-white border border-surface-border rounded-xl p-6 shadow-sm space-y-4">
-                    <div class="flex gap-2">
-                        <input id="copilot-input" onkeydown="if(event.key==='Enter') askCopilot()" type="text" placeholder="e.g. What orders need review? What is tomorrow's total sourdough count?" class="flex-1 bg-surface-subtle/60 border border-surface-border rounded-lg px-4 py-2 text-xs text-ink-primary outline-none focus:border-ink-primary">
-                        <button onclick="askCopilot()" class="px-4 py-2 rounded-lg bg-ink-primary hover:bg-black text-white text-xs font-semibold transition">
-                            Ask OrderStream
-                        </button>
-                    </div>
-
-                    <div id="copilot-response-container" class="hidden bg-surface-subtle border border-surface-border rounded-lg p-4 text-xs text-ink-primary space-y-2">
-                        <div class="font-bold text-[11px] uppercase tracking-wider text-ink-muted">Answer</div>
-                        <div id="copilot-response-text" class="leading-relaxed"></div>
-                    </div>
-                </div>
-            </section>
 
         </main>
 
     </div>
 
-    <!-- ========================================================= -->
-    <!-- SLIDE-OVER: SEE ORDERSTREAM IN ACTION (DEMO SCENARIOS) -->
-    <!-- ========================================================= -->
-    <div id="demo-scenarios-drawer" class="hidden fixed inset-y-0 right-0 w-96 bg-white border-l border-surface-border shadow-2xl z-40 flex flex-col justify-between">
-        <div class="p-6 space-y-6 overflow-y-auto">
-            <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-                <div>
-                    <h3 class="text-sm font-bold text-ink-primary">See OrderStream in Action</h3>
-                    <p class="text-xs text-ink-muted mt-0.5">Test real-world scenarios on Hudson Artisan Wholesale</p>
-                </div>
-                <button onclick="toggleDemoDrawer()" class="text-ink-muted hover:text-ink-primary">&times;</button>
-            </div>
 
-            <div class="space-y-3">
-                <button onclick="runScenario('repeat')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
-                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
-                        <span>1. "Same as Last Tuesday"</span>
-                        <span class="text-[10px] text-brand-800 font-semibold">Memory</span>
-                    </div>
-                    <p class="text-[11px] text-ink-secondary">Buyer texts "Same as last Tuesday + 4 baguettes". Auto-clones historical items.</p>
-                </button>
-
-                <button onclick="runScenario('jargon')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
-                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
-                        <span>2. Customer Terminology</span>
-                        <span class="text-[10px] text-brand-800 font-semibold">Language</span>
-                    </div>
-                    <p class="text-[11px] text-ink-secondary">Buyer asks for "4 of the big bread". Matched to Large Sourdough SKU.</p>
-                </button>
-
-                <button onclick="runScenario('anomaly')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
-                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
-                        <span>3. Unusual Quantity Spike</span>
-                        <span class="text-[10px] text-amber-800 font-semibold">Safety</span>
-                    </div>
-                    <p class="text-[11px] text-ink-secondary">Buyer requests 500 baguettes instead of 50. Flagged for staff review.</p>
-                </button>
-
-                <button onclick="runScenario('cutoff')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
-                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
-                        <span>4. Cutoff Policy Inquiry</span>
-                        <span class="text-[10px] text-brand-800 font-semibold">Rules</span>
-                    </div>
-                    <p class="text-[11px] text-ink-secondary">Buyer asks if they can still order for tomorrow. Answered from policy FAQ.</p>
-                </button>
-
-                <button onclick="runScenario('duplicate')" class="w-full text-left p-3.5 rounded-xl border border-surface-border hover:border-ink-primary bg-surface-subtle/40 hover:bg-white transition space-y-1">
-                    <div class="flex items-center justify-between text-xs font-bold text-ink-primary">
-                        <span>5. Duplicate Order Intercept</span>
-                        <span class="text-[10px] text-rose-800 font-semibold">Audit</span>
-                    </div>
-                    <p class="text-[11px] text-ink-secondary">Customer resends identical order within minutes. Intercepts double order.</p>
-                </button>
-            </div>
-        </div>
-
-        <div class="p-6 border-t border-surface-border bg-surface-subtle/60">
-            <button onclick="toggleDemoDrawer()" class="w-full py-2 bg-ink-primary text-white rounded-lg text-xs font-semibold transition">
-                Close Scenarios
-            </button>
-        </div>
-    </div>
 
     <!-- ========================================================= -->
     <!-- SLIDE-OVER: ORDER DETAIL & AUDIT TRAIL -->
@@ -1078,7 +984,6 @@
                     <div class="space-y-1.5 text-xs text-ink-primary">
                         <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> SMS Hotline</label>
                         <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> WhatsApp Business</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded border-surface-border text-brand-800"> Email Ingestion</label>
                     </div>
                 </div>
             </div>

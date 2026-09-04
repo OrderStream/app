@@ -10,15 +10,13 @@ import io
 from database import get_db
 import models
 from services.tenant_context import get_current_tenant
-from services.intelligence import run_copilot_query, record_human_correction_learning
+from services.intelligence import record_human_correction_learning
 
 router = APIRouter()
 
 # -------------------------------------------------------------
 # PYDANTIC SCHEMAS
 # -------------------------------------------------------------
-class CopilotRequest(BaseModel):
-    query: str
 
 class CorrectionRequest(BaseModel):
     order_id: int
@@ -1094,56 +1092,6 @@ def correct_item_learning(
 # -------------------------------------------------------------
 # 10. INTEGRATIONS & CHANNELS
 # -------------------------------------------------------------
-@router.get("/integrations/status")
-def get_integrations_status(
-    tenant: models.BusinessTenant = Depends(get_current_tenant), 
-    db: Session = Depends(get_db)
-):
-    phone_assigned = bool(tenant.assigned_inbound_number)
-    return [
-        {
-            "channel": "SMS Text Hotline",
-            "type": "Inbound Webhook",
-            "endpoint": "/api/webhook/twilio",
-            "status": "Connected" if phone_assigned else "Action Required",
-            "details": f"Assigned: {tenant.assigned_inbound_number if phone_assigned else 'Pending Hotline Provisioning'}",
-            "is_live": phone_assigned
-        },
-        {
-            "channel": "WhatsApp Business",
-            "type": "Twilio Messaging Webhook",
-            "endpoint": "/api/webhook/twilio",
-            "status": "Connected" if phone_assigned else "Action Required",
-            "details": f"Assigned: {tenant.assigned_inbound_number if phone_assigned else 'Pending Hotline Provisioning'}",
-            "is_live": phone_assigned
-        },
-        {
-            "channel": "Email Ingestion",
-            "type": "Inbound PO Webhook",
-            "endpoint": "/api/webhook/twilio",
-            "status": "Connected",
-            "details": f"Orders forwarded from: {tenant.contact_email or 'orders@bakery.com'}",
-            "is_live": True
-        },
-        {
-            "channel": "QuickBooks Accounting",
-            "type": "Batch Invoice CSV",
-            "endpoint": "/api/orders/export/csv",
-            "status": "Ready",
-            "details": "Generates standard QuickBooks batch import file",
-            "is_live": True
-        }
-    ]
-
-@router.post("/copilot")
-def copilot_endpoint(
-    req: CopilotRequest, 
-    tenant: models.BusinessTenant = Depends(get_current_tenant), 
-    db: Session = Depends(get_db)
-):
-    answer = run_copilot_query(db, req.query, business_id=tenant.id)
-    return {"answer": answer}
-
 @router.get("/export/csv")
 def export_quickbooks_csv(
     tenant: models.BusinessTenant = Depends(get_current_tenant), 

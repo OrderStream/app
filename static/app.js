@@ -160,7 +160,7 @@ function handleCmdSearch(query) {
 // -------------------------------------------------------------
 function switchTab(tabName, presetFilter = null) {
     currentTab = tabName;
-    const allTabs = ['overview', 'orders', 'kitchen', 'customers', 'products', 'brain', 'copilot'];
+    const allTabs = ['overview', 'orders', 'kitchen', 'customers', 'products', 'brain'];
 
     allTabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
@@ -187,8 +187,8 @@ function switchTab(tabName, presetFilter = null) {
         'kitchen': 'Kitchen Production Floor Sheet',
         'customers': 'Customer Directory (CRM)',
         'products': 'Product Catalog Management',
-        'brain': 'Rules & Business Knowledge',
-        'copilot': 'Operations Assistant'
+        'brain': 'Rules & Business Knowledge'
+
     };
     const headerTitle = document.getElementById('header-context-title');
     if (headerTitle) {
@@ -1199,88 +1199,11 @@ async function fetchMemories() {
 // -------------------------------------------------------------
 // 11. OPERATIONS INTELLIGENCE ("ASK ORDERSTREAM")
 // -------------------------------------------------------------
-async function askCopilot() {
-    const input = document.getElementById('copilot-input');
-    const query = input.value.trim();
-    if (!query) return;
-
-    const respBox = document.getElementById('copilot-response-container');
-    const respText = document.getElementById('copilot-response-text');
-    respBox.classList.remove('hidden');
-    respText.innerText = 'Analyzing workspace state...';
-
-    try {
-        const res = await fetch('/api/orders/copilot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query })
-        });
-        const data = await res.json();
-        respText.innerText = data.answer;
-    } catch (err) {
-        respText.innerText = 'Unable to answer query at this moment.';
-    }
-}
 
 // -------------------------------------------------------------
 // 12. "SEE ORDERSTREAM IN ACTION" (DEMO SCENARIOS)
 // -------------------------------------------------------------
-function toggleDemoDrawer() {
-    const drawer = document.getElementById('demo-scenarios-drawer');
-    if (drawer) drawer.classList.toggle('hidden');
-}
 
-async function runScenario(type) {
-    let payload = {};
-    if (type === 'repeat') {
-        payload = {
-            From: '+15559876',
-            Body: 'Same as last Tuesday + 4 baguettes for tomorrow morning please - Sarah',
-            Channel: 'WhatsApp'
-        };
-    } else if (type === 'jargon') {
-        payload = {
-            From: '+15551234',
-            Body: 'Hey team, add 4 of the big bread to our morning drop - Marco',
-            Channel: 'SMS'
-        };
-    } else if (type === 'anomaly') {
-        payload = {
-            From: '+15554321',
-            Body: 'Need 500 sourdough loaves for stadium catering tomorrow morning at 6am.',
-            Channel: 'Email'
-        };
-    } else if (type === 'cutoff') {
-        payload = {
-            From: '+15556789',
-            Body: 'Can I still place an order for tomorrow morning delivery?',
-            Channel: 'SMS'
-        };
-    } else if (type === 'duplicate') {
-        payload = {
-            From: '+15558822',
-            Body: 'Order for tomorrow: 12 sourdough loaves and 10 baguettes please.',
-            Channel: 'SMS'
-        };
-    }
-
-    try {
-        const formData = new URLSearchParams();
-        for (const k in payload) formData.append(k, payload[k]);
-
-        await fetch('/api/webhook/twilio', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-        });
-
-        // Re-fetch orders and switch to feed or overview
-        toggleDemoDrawer();
-        switchTab('overview');
-    } catch (err) {
-        console.error(err);
-    }
-}
 
 // -------------------------------------------------------------
 // 13. ONBOARDING & INTEGRATIONS MODALS
@@ -1300,6 +1223,3 @@ function finishOnboarding() {
     alert('Workspace channels updated.');
 }
 
-function openIntegrationsModal() {
-    alert('Inbound channels active: SMS (+1 555-839-2011), WhatsApp Business, and Email PO Ingestion connected to production pipeline.');
-}
