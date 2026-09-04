@@ -49,11 +49,11 @@ def seed_default_data(db: Session):
 
     # Seed Tenant 1 Customers
     if db.query(models.Customer).filter(models.Customer.business_id == t1.id).count() == 0:
-        c1 = models.Customer(business_id=t1.id, account_number="ACC-1001", business_name="Cafe Bella", contact_name="Marco Rossi", phone_number="+15551234", email="orders@cafebella.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale Tier 1 (-10%)", discount_percentage=10.0, special_instructions="Side door delivery before 5 AM. Gate code: 4421.", enabled_channels="SMS, WhatsApp", avg_order_volume=18.0, usual_order_day="Tuesday, Thursday, Saturday")
-        c2 = models.Customer(business_id=t1.id, account_number="ACC-1002", business_name="The Daily Grind Cafe", contact_name="Sarah Jenkins", phone_number="+15559876", email="sarah@dailygrind.com", delivery_route="Route B - Uptown / North", pricing_tier="Wholesale Standard", discount_percentage=0.0, special_instructions="Leave delivery on front counter tray.", enabled_channels="SMS, WhatsApp, Email", avg_order_volume=22.0, usual_order_day="Monday, Wednesday, Friday")
+        c1 = models.Customer(business_id=t1.id, account_number="ACC-1001", business_name="Cafe Bella", contact_name="Marco Rossi", phone_number="+15551234", email="orders@cafebella.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale Tier 1 (-10%)", discount_percentage=10.0, special_instructions="Side door delivery before 5 AM. Gate code: 4421.", enabled_channels="SMS", avg_order_volume=18.0, usual_order_day="Tuesday, Thursday, Saturday")
+        c2 = models.Customer(business_id=t1.id, account_number="ACC-1002", business_name="The Daily Grind Cafe", contact_name="Sarah Jenkins", phone_number="+15559876", email="sarah@dailygrind.com", delivery_route="Route B - Uptown / North", pricing_tier="Wholesale Standard", discount_percentage=0.0, special_instructions="Leave delivery on front counter tray.", enabled_channels="SMS, Email", avg_order_volume=22.0, usual_order_day="Monday, Wednesday, Friday")
         c3 = models.Customer(business_id=t1.id, account_number="ACC-1003", business_name="Harbor View Bistro", contact_name="Chef Tony", phone_number="+15554321", email="kitchen@harborview.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale VIP (-15%)", discount_percentage=15.0, special_instructions="Chef signature required for delivery receipt.", enabled_channels="SMS, Email", avg_order_volume=14.0, usual_order_day="Tuesday, Friday")
-        c4 = models.Customer(business_id=t1.id, account_number="ACC-1004", business_name="Greenwood Espresso Bar", contact_name="David Kim", phone_number="+15556789", email="dave@greenwoodcoffee.com", delivery_route="Route C - Westside Suburbs", pricing_tier="Wholesale Standard", discount_percentage=0.0, special_instructions="Deliver directly to kitchen prep table.", enabled_channels="SMS, WhatsApp", avg_order_volume=28.0, usual_order_day="Daily (Mon–Sat)")
-        c5 = models.Customer(business_id=t1.id, account_number="ACC-1005", business_name="SoHo Grand Bistro", contact_name="Claire Laurent", phone_number="+15557711", email="purchasing@sohogrand.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale VIP (-15%)", discount_percentage=15.0, special_instructions="Service elevator to 2nd floor prep kitchen.", enabled_channels="Email, WhatsApp", avg_order_volume=35.0, usual_order_day="Tuesday, Thursday, Saturday")
+        c4 = models.Customer(business_id=t1.id, account_number="ACC-1004", business_name="Greenwood Espresso Bar", contact_name="David Kim", phone_number="+15556789", email="dave@greenwoodcoffee.com", delivery_route="Route C - Westside Suburbs", pricing_tier="Wholesale Standard", discount_percentage=0.0, special_instructions="Deliver directly to kitchen prep table.", enabled_channels="SMS", avg_order_volume=28.0, usual_order_day="Daily (Mon–Sat)")
+        c5 = models.Customer(business_id=t1.id, account_number="ACC-1005", business_name="SoHo Grand Bistro", contact_name="Claire Laurent", phone_number="+15557711", email="purchasing@sohogrand.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale VIP (-15%)", discount_percentage=15.0, special_instructions="Service elevator to 2nd floor prep kitchen.", enabled_channels="Email", avg_order_volume=35.0, usual_order_day="Tuesday, Thursday, Saturday")
         c6 = models.Customer(business_id=t1.id, account_number="ACC-1006", business_name="Tribeca Morning Kitchen", contact_name="Paul Miller", phone_number="+15558822", email="paul@tribecakitchen.com", delivery_route="Route A - Downtown Core", pricing_tier="Wholesale Tier 1 (-10%)", discount_percentage=10.0, special_instructions="Leave crates inside vestibule.", enabled_channels="SMS, Email", avg_order_volume=20.0, usual_order_day="Daily")
         db.add_all([c1, c2, c3, c4, c5, c6])
         db.commit()
@@ -90,10 +90,10 @@ def seed_default_data(db: Session):
             customer_id=c2.id,
             customer_phone="+15559876",
             customer_name="The Daily Grind Cafe",
-            channel="WhatsApp",
+            channel="SMS",
             raw_message="Same as last Tuesday + 4 baguettes. Thanks! - Sarah",
             status="Sent to Production",
-            confirmation_status="Confirmed via WhatsApp",
+            confirmation_status="Confirmed via SMS",
             confidence_score=96,
             delivery_date="Tomorrow Morning",
             shift="Morning",
@@ -165,7 +165,7 @@ def seed_default_data(db: Session):
             models.OrderTimelineEvent(order_id=o1.id, event_type="Customer Identified", actor="OrderStream", description="Matched phone ID to ACC-1001 (Cafe Bella). Applied Tier 1 discount (-10%).", created_at=o1.created_at + timedelta(seconds=2)),
             models.OrderTimelineEvent(order_id=o1.id, event_type="Approved", actor="Staff (Alex)", description="Order reviewed and approved for morning route.", created_at=o1.created_at + timedelta(minutes=5)),
             
-            models.OrderTimelineEvent(order_id=o2.id, event_type="Message Received", actor="Customer via WhatsApp", description="Inbound WhatsApp message received from +15559876", created_at=o2.created_at),
+            models.OrderTimelineEvent(order_id=o2.id, event_type="Message Received", actor="Customer via SMS", description="Inbound SMS message received from +15559876", created_at=o2.created_at),
             models.OrderTimelineEvent(order_id=o2.id, event_type="Order Memory Activated", actor="OrderStream", description="Recognized 'Same as last Tuesday'. Auto-cloned 14 items from previous batch and added 4x Baguettes.", created_at=o2.created_at + timedelta(seconds=2)),
             models.OrderTimelineEvent(order_id=o2.id, event_type="Sent to Production", actor="OrderStream", description="High confidence recurring order (96%) automatically queued for 3 AM bake.", created_at=o2.created_at + timedelta(minutes=5)),
 

@@ -59,7 +59,7 @@ class TenantIsolationTestSuite(unittest.TestCase):
             customer_id=c_beta.id,
             customer_phone="+441619998888",
             customer_name="Salford Coffee House",
-            channel="WhatsApp",
+            channel="SMS",
             raw_message="Need 50 Manchester Sourdough Cobs please",
             status="Approved",
             delivery_date="Tomorrow"

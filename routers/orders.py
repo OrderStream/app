@@ -75,7 +75,7 @@ class CustomerCreateRequest(BaseModel):
     pricing_tier: str = "Wholesale Standard"
     discount_percentage: float = 0.0
     special_instructions: Optional[str] = ""
-    enabled_channels: str = "SMS, WhatsApp, Email"
+    enabled_channels: str = "SMS, Email"
 
 class CustomerUpdateRequest(BaseModel):
     business_name: str
@@ -172,11 +172,6 @@ def get_dashboard_summary(
     channels_health = [
         {
             "channel": "SMS Text Hotline",
-            "status": "Connected" if tenant.assigned_inbound_number else "Action Required",
-            "identifier": tenant.assigned_inbound_number or "Not Provisioned"
-        },
-        {
-            "channel": "WhatsApp Business",
             "status": "Connected" if tenant.assigned_inbound_number else "Action Required",
             "identifier": tenant.assigned_inbound_number or "Not Provisioned"
         },
