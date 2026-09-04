@@ -1015,7 +1015,7 @@ async function submitCustomerSave() {
         pricing_tier: 'Wholesale Tier',
         discount_percentage: parseFloat(document.getElementById('cust-edit-discount').value) || 0.0,
         special_instructions: document.getElementById('cust-edit-instructions').value,
-        enabled_channels: 'SMS, WhatsApp, Email'
+        enabled_channels: 'SMS, Email'
     };
 
     try {

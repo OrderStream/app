@@ -46,7 +46,7 @@ class Customer(Base):
     pricing_tier = Column(String(50), default="Wholesale Standard") # Wholesale Standard, Tier 1 (-10%), VIP (-15%)
     discount_percentage = Column(Float, default=0.0)
     special_instructions = Column(Text, default="")
-    enabled_channels = Column(String(100), default="SMS, WhatsApp, Email")
+    enabled_channels = Column(String(100), default="SMS, Email")
     avg_order_volume = Column(Float, default=15.0)
     usual_order_day = Column(String(100), default="Tuesday, Thursday, Saturday")
     is_archived = Column(Boolean, default=False)
@@ -101,7 +101,7 @@ class Order(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     customer_phone = Column(String(50), index=True)
     customer_name = Column(String(100), default="Unknown Customer")
-    channel = Column(String(50), default="SMS") # SMS, WhatsApp, Email, Voice, Manual
+    channel = Column(String(50), default="SMS") # SMS, Email, Voice, Manual
     raw_message = Column(Text)
     
     # Human Review Workflow Statuses: Received, Processing, Needs Review, Ready, Approved, Sent to Production, Completed, Cancelled
@@ -175,7 +175,7 @@ class InboundWebhookEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), index=True)
-    provider = Column(String(50), default="twilio_sms") # twilio_sms, twilio_whatsapp, email, manual
+    provider = Column(String(50), default="twilio_sms") # twilio_sms, email, manual
     provider_message_id = Column(String(100), index=True, unique=True, nullable=True) # e.g. Twilio MessageSid
     sender = Column(String(100))
     recipient = Column(String(100), nullable=True)
