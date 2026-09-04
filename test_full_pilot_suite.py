@@ -11,7 +11,7 @@ from database import SessionLocal, engine
 from services.seeder import seed_default_data
 from services.llm_parser import parse_order_text
 from services.matcher import match_or_create_customer, match_product_sku
-from services.intelligence import process_order_intelligence, run_copilot_query, record_human_correction_learning
+from services.intelligence import process_order_intelligence, record_human_correction_learning
 
 class OrderStreamPilotTestSuite(unittest.TestCase):
     @classmethod
